@@ -1,1 +1,8 @@
 # MAD25_T02_fantasticfour
+
+##Disclaimer  
+This is a student assignment project for the Kotlin App 
+Development module at Ngee Ann Polytechnic. Developed for 
+educational purposes.
+
+Lavaniya D/O Rajamoorthi github username: Lavaniya01
