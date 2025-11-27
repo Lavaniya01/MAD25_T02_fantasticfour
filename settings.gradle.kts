@@ -4,10 +4,9 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
-
     plugins {
-        // KSP plugin (version must match Kotlin version)
-        id("com.google.devtools.ksp") version "1.9.22-1.0.16"
+        // KSP plugin MUST match Kotlin 2.0.21
+        id("com.google.devtools.ksp") version "2.0.21-1.0.25"
     }
 }
 
