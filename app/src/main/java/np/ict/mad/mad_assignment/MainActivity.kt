@@ -55,28 +55,20 @@ fun AppNavigation() {
         }
 
     NavHost(
-        navController = navController,
-        startDestination = Routes.Start
+        navController = nav, startDestination = Routes.Start
     ) {
-        composable(Routes.Start) { StartingScreen(navController) }
-        composable(Routes.Home) { HomeScreen(navController) }
-        composable(Routes.AddTask) {AddTaskScreen(navController) }
-
-        composable("task_detail/{taskId}"){ backStackEntry ->
-            val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull()
-            if (taskId != null){
-                TaskDetailScreen(navController, taskId)
-            }
-        }
+        composable(Routes.Start) { StartingScreen(nav) }
+        composable(Routes.Home) { HomeScreen(nav) }
+        composable(Routes.AddTask) {AddTaskScreen(nav) }
 
         composable("edit_task/{taskId}"){ backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull()
             if (taskId != null){
-                EditTaskScreen(navController, taskId)
+                EditTaskScreen(nav, id)
             }
         }
     }
-}
+
 
         composable("details/{taskId}") { backStackEntry ->
             val id = backStackEntry.arguments?.getString("taskId")?.toInt() ?: 0
@@ -213,11 +205,11 @@ fun HomeScreen(nav: NavHostController) {
 fun TaskCard(
     task: Task,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var expanded by remember{ mutableStateOf(false)}
+    onDelete: () -> Unit,
+    nav: NavHostController) {
 
-fun TaskCard(task: Task, nav: NavHostController) {
+    var expanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -284,83 +276,13 @@ fun TaskCard(task: Task, nav: NavHostController) {
     }
 }
 
-// ---------------------------------------------------
-// TASK DETAIL SCREEN
-// ---------------------------------------------------
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TaskDetailScreen(navController: NavHostController, taskId: Int){
-    val context = LocalContext.current
-    val dao = DatabaseProvider.getDatabase(context).taskDao()
-
-    //Fetch the specific task by ID
-    val taskState = dao.getTaskById(taskId).collectAsState(initial = null)
-    val task = taskState.value
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(task?.title ?: "Loading")},
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ){
-        padding ->
-        Column(
-            modifier = Modifier.padding(padding).padding(16.dp)
-        ) {
-            if (task != null){
-                Text(
-                    text = "Title:",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Text(
-                    text = task.title,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Text(
-                    text = "Description:",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = task.description ?: "No detailed description was provided for this task.",
-                    fontSize = 18.sp
-                )
-
-            } else{
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ){
-                    CircularProgressIndicator()
-                }
-            }
-        }
-    }
-}
-
 
 // ---------------------------------------------------
 // EDIT TASK SCREEN
 // ---------------------------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditTaskScreen(navController: NavHostController, taskId: Int){
+fun EditTaskScreen(navController: NavHostController, taskId: Int) {
     val context = LocalContext.current
     val dao = DatabaseProvider.getDatabase(context).taskDao()
     val scope = rememberCoroutineScope()
@@ -375,7 +297,7 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int){
 
     //Update text fields when task loads from DB (using LaunchedEffect)
     LaunchedEffect(task) {
-        task?.let{
+        task?.let {
             title = it.title
             description = it.description ?: ""
         }
@@ -384,19 +306,18 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int){
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Edit Task: ${task?.title ?: ""}")},
+                title = { Text("Edit Task: ${task?.title ?: ""}") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack()} ) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
         }
-    ){
-        padding ->
+    ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
-        ){
+        ) {
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -430,14 +351,15 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int){
 
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(Color(0xFF2196F3))
-            ){
-                    Text(
-                        "Update Task",
-                        fontSize = 18.sp,
-                        color = Color.White
-                        )
-                }
+            ) {
+                Text(
+                    "Update Task",
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+            }
         }
+
     }
 }
 

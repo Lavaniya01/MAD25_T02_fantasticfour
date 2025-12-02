@@ -23,8 +23,8 @@ interface TaskDao {
     @Delete
     suspend fun deleteTask(task: Task)
 
-    @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
-    suspend fun getTaskById(taskId: Int): Task?
+    @Query("SELECT * FROM tasks WHERE id = :taskId")
+    fun getTaskById(taskId: Int): Flow<Task>
 
 }
 
