@@ -6,7 +6,7 @@ Development module at Ngee Ann Polytechnic. Developed for
 educational purposes.
 
 Team members:  
-Lavaniya D/O Rajamoorthi github username: Lavaniya01  
+Lavaniya D/O Rajamoorthi (S10262519) github username: Lavaniya01  
 Phyu Hnin Thant github username: hinamista  
 Ethan Chan github username: Hiiamnubkillme   
 Marcus Tham Wei Jun github username: MarcTWJ
@@ -36,8 +36,7 @@ Stage 1 Features (Interim):
 
 - Starting screen with centered “SmartTasks” logo
 - Add Task screen UI (title field, description field, save button)
+- Image attachment
 - Home screen UI layout (LazyColumn placeholder for task list)
 - Room Database setup (Entity, DAO, AppDatabase, DatabaseProvider)
-- Planning for CRUD operations (add/view/update/delete tasks)
-- Wireframes for Add Task and Home screens
-- GitHub repository with README and team allocation
+- CRUD operations (add/view/update/delete tasks)
