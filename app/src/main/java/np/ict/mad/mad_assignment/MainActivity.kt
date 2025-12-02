@@ -66,12 +66,6 @@ fun AppNavigation() {
 
 @Composable
 fun StartingScreen(nav: NavHostController) {
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(1500)
-        nav.navigate(Routes.Home) {
-            popUpTo(Routes.Start) { inclusive = true }
-        }
-    }
 
     Box(
         modifier = Modifier
@@ -79,17 +73,58 @@ fun StartingScreen(nav: NavHostController) {
             .background(Color(0xFFF5F5F5)),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "SmartTasks",
-            style = TextStyle(
-                fontSize = 46.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 2.sp,
-                color = Color(0xFF2A2A2A)
+
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(28.dp)
+        ) {
+
+            Text(
+                text = "SmartTasks",
+                style = TextStyle(
+                    fontSize = 46.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 2.sp,
+                    color = Color(0xFF2A2A2A)
+                )
             )
-        )
+
+            Text(
+                text = "Organize your day.",
+                style = TextStyle(
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.DarkGray
+                ),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Button(
+                onClick = {
+                    nav.navigate(Routes.Home) {
+                        popUpTo(Routes.Start) { inclusive = true }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+                    .height(55.dp),
+                colors = ButtonDefaults.buttonColors(Color(0xFF4CAF50)),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Text(
+                    text = "Let's Get Started",
+                    fontSize = 18.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
+
 
 @Composable
 fun HomeScreen(nav: NavHostController) {
