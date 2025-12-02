@@ -36,8 +36,7 @@ Stage 1 Features (Interim):
 
 - Starting screen with centered “SmartTasks” logo
 - Add Task screen UI (title field, description field, save button)
+- Image attachment
 - Home screen UI layout (LazyColumn placeholder for task list)
 - Room Database setup (Entity, DAO, AppDatabase, DatabaseProvider)
-- Planning for CRUD operations (add/view/update/delete tasks)
-- Wireframes for Add Task and Home screens
-- GitHub repository with README and team allocation
+- CRUD operations (add/view/update/delete tasks)
