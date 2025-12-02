@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -29,6 +30,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.runtime.rememberCoroutineScope
+
 
 
 
@@ -55,7 +60,21 @@ fun AppNavigation() {
     ) {
         composable(Routes.Start) { StartingScreen(navController) }
         composable(Routes.Home) { HomeScreen(navController) }
-        composable(Routes.AddTask) { AddTaskScreen(navController) }
+        composable(Routes.AddTask) {AddTaskScreen(navController) }
+
+        composable("task_detail/{taskId}"){ backStackEntry ->
+            val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull()
+            if (taskId != null){
+                TaskDetailScreen(navController, taskId)
+            }
+        }
+
+        composable("edit_task/{taskId}"){ backStackEntry ->
+            val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull()
+            if (taskId != null){
+                EditTaskScreen(navController, taskId)
+            }
+        }
     }
 }
 
@@ -79,16 +98,27 @@ fun StartingScreen(navController: NavHostController) {
             .background(Color(0xFFF5F5F5)),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "SmartTasks",
-            style = TextStyle(
-                fontSize = 46.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 2.sp,
-                color = Color(0xFF2A2A2A)
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.DateRange,
+                contentDescription = "Date Icon",
+                tint = Color(0xFF2A2A2A),
+                modifier = Modifier.size(52.dp).padding(end = 8.dp)
             )
-        )
-    }
+
+            Text(
+                text = "SmartTasks",
+                style = TextStyle(
+                    fontSize = 46.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 2.sp,
+                    color = Color(0xFF2A2A2A)
+                )
+            )
+        }
+        }
 }
 
 // ---------------------------------------------------
@@ -102,6 +132,7 @@ fun HomeScreen(navController: NavHostController) {
     val dao = DatabaseProvider.getDatabase(context).taskDao()
 
     val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         floatingActionButton = {
@@ -139,7 +170,15 @@ fun HomeScreen(navController: NavHostController) {
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(tasks) { task ->
-                        TaskCard(task = task)
+                        TaskCard(
+                            task = task,
+                            onEdit = { navController.navigate("edit_task/${task.id}")},
+                            onDelete = {
+                                scope.launch(Dispatchers.IO){
+                                    dao.deleteTask(task)
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -148,11 +187,17 @@ fun HomeScreen(navController: NavHostController) {
 }
 
 // ---------------------------------------------------
-// TASK CARD UI
+// TASK CARD
 // ---------------------------------------------------
 
 @Composable
-fun TaskCard(task: Task) {
+fun TaskCard(
+    task: Task,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var expanded by remember{ mutableStateOf(false)}
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -160,15 +205,49 @@ fun TaskCard(task: Task) {
         colors = CardDefaults.cardColors(Color.White),
         elevation = CardDefaults.cardElevation(3.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(task.title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(task.title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
-            if (task.description != null && task.description.isNotEmpty()) {
-                Text(
-                    task.description,
-                    fontSize = 16.sp,
-                    color = Color.DarkGray
-                )
+                if (task.description != null && task.description.isNotEmpty()) {
+                    Text(
+                        task.description,
+                        fontSize = 16.sp,
+                        color = Color.DarkGray,
+                        maxLines = 2
+                    )
+                }
+            }
+
+            Box{
+                IconButton(onClick = { expanded = true}) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                }
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = {Text("Edit")},
+                        onClick = {
+                            expanded = false
+                            onEdit()
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = {Text("Delete", color = Color.Red)},
+                        onClick = {
+                            expanded = false
+                            onDelete()
+                        }
+                    )
+                }
             }
         }
     }
@@ -256,3 +335,161 @@ fun AddTaskScreen(navController: NavHostController) {
         }
     }
 }
+
+// ---------------------------------------------------
+// TASK DETAIL SCREEN
+// ---------------------------------------------------
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TaskDetailScreen(navController: NavHostController, taskId: Int){
+    val context = LocalContext.current
+    val dao = DatabaseProvider.getDatabase(context).taskDao()
+
+    //Fetch the specific task by ID
+    val taskState = dao.getTaskById(taskId).collectAsState(initial = null)
+    val task = taskState.value
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(task?.title ?: "Loading")},
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ){
+        padding ->
+        Column(
+            modifier = Modifier.padding(padding).padding(16.dp)
+        ) {
+            if (task != null){
+                Text(
+                    text = "Title:",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Text(
+                    text = task.title,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "Description:",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = task.description ?: "No detailed description was provided for this task.",
+                    fontSize = 18.sp
+                )
+
+            } else{
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ){
+                    CircularProgressIndicator()
+                }
+            }
+        }
+    }
+}
+
+
+// ---------------------------------------------------
+// EDIT TASK SCREEN
+// ---------------------------------------------------
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditTaskScreen(navController: NavHostController, taskId: Int){
+    val context = LocalContext.current
+    val dao = DatabaseProvider.getDatabase(context).taskDao()
+    val scope = rememberCoroutineScope()
+
+    // Load existing data
+    val taskState = dao.getTaskById(taskId).collectAsState(initial = null)
+    val task = taskState.value
+
+    // State for the text fields
+    var title by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+
+    //Update text fields when task loads from DB (using LaunchedEffect)
+    LaunchedEffect(task) {
+        task?.let{
+            title = it.title
+            description = it.description ?: ""
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Edit Task: ${task?.title ?: ""}")},
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack()} ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ){
+        padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
+        ){
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Task Title") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Description") },
+                modifier = Modifier.fillMaxWidth().height(120.dp),
+                maxLines = 5
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = {
+                    if (title.isNotBlank() && task != null) {
+                        //Create a copy of the original task with updated values
+                        val updatedTask = task.copy(title = title, description = description)
+                        scope.launch(Dispatchers.IO) {
+                            dao.updateTask(updatedTask)
+                        }
+                        navController.popBackStack()
+                    }
+                },
+
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(Color(0xFF2196F3))
+            ){
+                    Text(
+                        "Update Task",
+                        fontSize = 18.sp,
+                        color = Color.White
+                        )
+                }
+        }
+    }
+}
+
