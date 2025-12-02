@@ -6,7 +6,7 @@ Development module at Ngee Ann Polytechnic. Developed for
 educational purposes.
 
 Team members:  
-Lavaniya D/O Rajamoorthi github username: Lavaniya01  
+Lavaniya D/O Rajamoorthi (S10262519) github username: Lavaniya01  
 Phyu Hnin Thant github username: hinamista  
 Ethan Chan github username: Hiiamnubkillme   
 Marcus Tham Wei Jun github username: MarcTWJ
