@@ -30,8 +30,8 @@ import kotlinx.coroutines.launch
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.withContext
 
 
 class MainActivity : ComponentActivity() {
@@ -49,14 +49,6 @@ fun AppNavigation() {
     val nav = rememberNavController()
 
     NavHost(navController = nav, startDestination = Routes.Start) {
-
-        composable(Routes.Start) {
-            StartingScreen(nav)
-        }
-
-    NavHost(
-        navController = nav, startDestination = Routes.Start
-    ) {
         composable(Routes.Start) { StartingScreen(nav) }
         composable(Routes.Home) { HomeScreen(nav) }
         composable(Routes.AddTask) {AddTaskScreen(nav) }
@@ -67,8 +59,6 @@ fun AppNavigation() {
                 EditTaskScreen(nav, id)
             }
         }
-    }
-
 
         composable("details/{taskId}") { backStackEntry ->
             val id = backStackEntry.arguments?.getString("taskId")?.toInt() ?: 0
@@ -180,7 +170,8 @@ fun HomeScreen(nav: NavHostController) {
                     items(tasks) { task ->
                         TaskCard(
                             task = task,
-                            onEdit = { navController.navigate("edit_task/${task.id}")},
+                            onClick = {nav.navigate("task_detail/${task.id}") },
+                            onEdit = {nav.navigate("edit_task/${task.id}")},
                             onDelete = {
                                 scope.launch(Dispatchers.IO){
                                     dao.deleteTask(task)
@@ -188,14 +179,10 @@ fun HomeScreen(nav: NavHostController) {
                             }
                         )
                     }
-            LazyColumn {
-                items(tasks) { task ->
-                    TaskCard(task, nav)
-                }
-            }
+
         }
     }
-}
+}}}
 
 // ---------------------------------------------------
 // TASK CARD
@@ -204,25 +191,26 @@ fun HomeScreen(nav: NavHostController) {
 @Composable
 fun TaskCard(
     task: Task,
+    onClick: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    nav: NavHostController) {
+    onDelete: () -> Unit,) {
 
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false)}
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
-            .clickable { nav.navigate("details/${task.id}") },
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(3.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth()
+                .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(task.title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
                 if (task.description != null && task.description.isNotEmpty()) {
@@ -232,6 +220,20 @@ fun TaskCard(
                         color = Color.DarkGray,
                         maxLines = 2
                     )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ){
+                    task.priority?.let{
+                        Text("Priority: $it", fontSize = 1.sp)
+                    }
+
+                    task.date?.let {
+                        Text("Due Date: $it", fontSize = 14.sp)
+                    }
                 }
             }
 
@@ -274,7 +276,7 @@ fun TaskCard(
             }
         }
     }
-}
+}}
 
 
 // ---------------------------------------------------
@@ -288,8 +290,17 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
     val scope = rememberCoroutineScope()
 
     // Load existing data
-    val taskState = dao.getTaskById(taskId).collectAsState(initial = null)
-    val task = taskState.value
+    var task by remember { mutableStateOf<Task?>(null) }
+    var isLoaded by remember { mutableStateOf(false) }
+
+    // Load task once
+    LaunchedEffect(taskId) {
+        val t = withContext(Dispatchers.IO) {
+            dao.getTaskById(taskId)
+        }
+        task = t
+        isLoaded = true
+    }
 
     // State for the text fields
     var title by remember { mutableStateOf("") }
@@ -341,7 +352,7 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                 onClick = {
                     if (title.isNotBlank() && task != null) {
                         //Create a copy of the original task with updated values
-                        val updatedTask = task.copy(title = title, description = description)
+                        val updatedTask = task!!.copy(title = title, description = description)
                         scope.launch(Dispatchers.IO) {
                             dao.updateTask(updatedTask)
                         }

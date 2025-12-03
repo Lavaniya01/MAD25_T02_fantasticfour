@@ -79,12 +79,10 @@ fun TaskDetailsContent(task: Task) {
 
         if (!task.description.isNullOrBlank()) {
             Text(
-                text = task.description!!,
+                text = task.description,
                 fontSize = 18.sp
             )
         }
-
-        Divider()
 
         // Show priority
         Text(
