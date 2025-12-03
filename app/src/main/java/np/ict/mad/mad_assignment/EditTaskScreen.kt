@@ -1,5 +1,7 @@
 package np.ict.mad.mad_assignment
 
+import android.R.attr.priority
+import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,8 +17,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +50,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
+import androidx.core.net.toUri
+import java.util.Calendar
+import kotlin.math.exp
 
 // ---------------------------------------------------
 // EDIT TASK SCREEN
@@ -72,12 +81,35 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
+    // Priority Dropdown
+    val priorities = listOf("Low", "Medium", "High")
+    var expanded by remember { mutableStateOf(false) }
+    var selectedPriority by remember { mutableStateOf("Low") }
+
+    // Date Picker
+    var selectedDate by remember { mutableStateOf("Select Date") }
+
+    val calender = Calendar.getInstance()
+    val datePicker = DatePickerDialog(
+        context,
+        { _, year, month, day ->
+            selectedDate = "$day/${month + 1}/$year"
+        },
+        calender.get(Calendar.YEAR),
+        calender.get(Calendar.MONTH),
+        calender.get(Calendar.DAY_OF_MONTH)
+    )
+
     // Image Attachment
     var imageUri by remember { mutableStateOf<Uri?>(null) }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
+        uri?.let {
+            context.contentResolver
+                .takePersistableUriPermission(it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION )
+        }
         imageUri = uri
     }
 
@@ -86,7 +118,9 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
         task?.let {
             title = it.title
             description = it.description ?: ""
-            imageUri = it.imageUri?.let { Uri.parse(it) }
+            selectedPriority = it.priority ?: "Low"
+            selectedDate = it.date ?: "Select date"
+            imageUri = it.imageUri?.toUri()
         }
     }
 
@@ -103,8 +137,14 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
         }
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // Title Input
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -112,8 +152,7 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
+            // Description Input
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
@@ -122,6 +161,53 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                 maxLines = 5
             )
 
+            // Priority Dropdown
+            Column{
+                Text("Priority", style = MaterialTheme.typography.bodyMedium)
+
+                OutlinedTextField(
+                    value = selectedPriority,
+                    onValueChange = {},
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Select Priority") },
+                    trailingIcon = {
+                        IconButton(onClick = { expanded = !expanded }){
+                            Icon(
+                                imageVector = Icons.Filled.ArrowDropDown,
+                                contentDescription = null
+                            )
+                        }
+                    }
+                )
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ){
+                    priorities.forEach { p ->
+                        DropdownMenuItem(
+                            text = { Text(p) },
+                            onClick = {
+                                selectedPriority = p
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+
+
+            }
+
+            // Date Picker
+            Button(
+                onClick = { datePicker.show() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(selectedDate)
+            }
+
+            // Image Attachment
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -146,13 +232,18 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
+            // Update Button
             Button(
                 onClick = {
                     if (title.isNotBlank() && task != null) {
                         //Create a copy of the original task with updated values
-                        val updatedTask = task!!.copy(title = title, description = description)
+                        val updatedTask = task!!.copy(
+                            title = title,
+                            description = description,
+                            priority = selectedPriority,
+                            date = selectedDate,
+                            imageUri = imageUri?.toString()
+                        )
                         scope.launch(Dispatchers.IO) {
                             dao.updateTask(updatedTask)
                         }

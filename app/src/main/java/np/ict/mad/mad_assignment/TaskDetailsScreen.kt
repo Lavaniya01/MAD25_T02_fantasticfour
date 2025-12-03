@@ -18,9 +18,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +93,7 @@ fun TaskDetailsContent(task: Task) {
         task.imageUri?.let { uriString ->
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(Uri.parse(uriString))
+                    .data(uriString.toUri())
                     .crossfade(true)
                     .build(),
 
@@ -103,8 +103,11 @@ fun TaskDetailsContent(task: Task) {
                     .fillMaxWidth()
                     .heightIn(max = 250.dp),
 
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         // Show priority

@@ -62,7 +62,7 @@ fun AppNavigation() {
         composable("edit_task/{taskId}"){ backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull()
             if (taskId != null){
-                EditTaskScreen(nav, id)
+                EditTaskScreen(nav, taskId)
             }
         }
 
@@ -244,7 +244,7 @@ fun TaskCard(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ){
                     task.priority?.let{
-                        Text("Priority: $it", fontSize = 1.sp)
+                        Text("Priority: $it", fontSize = 14.sp)
                     }
 
                     task.date?.let {
@@ -278,18 +278,7 @@ fun TaskCard(
                         }
                     )
                 }
-            // SAFE description check
-            task.description?.let {
-                Text(it, fontSize = 16.sp, color = Color.Gray)
-            }
 
-            task.priority?.let {
-                Text("Priority: $it", fontSize = 14.sp)
-            }
-
-            task.date?.let {
-                Text("Due: $it", fontSize = 14.sp)
-            }
         }
     }
 }}
