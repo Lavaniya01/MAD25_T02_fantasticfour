@@ -101,7 +101,7 @@ fun TaskDetailsContent(task: Task) {
 
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 250.dp),
+                    .heightIn(min = 150.dp, max = 350.dp),
 
                 contentScale = ContentScale.Crop,
 

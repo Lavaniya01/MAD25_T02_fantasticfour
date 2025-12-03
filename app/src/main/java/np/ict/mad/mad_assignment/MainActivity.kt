@@ -50,6 +50,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+fun priorityToInt(priority: String?): Int{
+    return when (priority) {
+        "High" -> 3
+        "Medium" -> 2
+        "Low" -> 1
+        else -> 0
+    }
+}
+
 @Composable
 fun AppNavigation() {
     val nav = rememberNavController()
@@ -142,6 +151,13 @@ fun HomeScreen(nav: NavHostController) {
     val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
+    // Sorted Tasks
+    val sortedTasks = remember(tasks) {
+        tasks.sortedWith (
+            compareByDescending<Task> { priorityToInt(it.priority) }.thenBy { it.id }
+        )
+    }
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
@@ -166,17 +182,17 @@ fun HomeScreen(nav: NavHostController) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (tasks.isEmpty()) {
+            if (sortedTasks.isEmpty()) {
                 Text(
                     text = "No tasks yet!",
                     style = TextStyle(fontSize = 18.sp, color = Color.Gray)
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(tasks) { task ->
+                    items(sortedTasks) { task ->
                         TaskCard(
                             task = task,
-                            onClick = {nav.navigate("task_detail/${task.id}") },
+                            onClick = {nav.navigate("details/${task.id}") },
                             onEdit = {nav.navigate("edit_task/${task.id}")},
                             onDelete = {
                                 scope.launch(Dispatchers.IO){

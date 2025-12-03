@@ -1,6 +1,5 @@
 package np.ict.mad.mad_assignment
 
-import android.R.attr.priority
 import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -20,7 +19,6 @@ import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,7 +50,8 @@ import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
 import androidx.core.net.toUri
 import java.util.Calendar
-import kotlin.math.exp
+import java.util.Locale
+import java.text.SimpleDateFormat
 
 // ---------------------------------------------------
 // EDIT TASK SCREEN
@@ -87,18 +86,14 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
     var selectedPriority by remember { mutableStateOf("Low") }
 
     // Date Picker
+    val initialCalender = Calendar.getInstance()
     var selectedDate by remember { mutableStateOf("Select Date") }
 
-    val calender = Calendar.getInstance()
-    val datePicker = DatePickerDialog(
-        context,
-        { _, year, month, day ->
-            selectedDate = "$day/${month + 1}/$year"
-        },
-        calender.get(Calendar.YEAR),
-        calender.get(Calendar.MONTH),
-        calender.get(Calendar.DAY_OF_MONTH)
-    )
+    var calendarYear by remember { mutableStateOf(initialCalender.get(Calendar.YEAR)) }
+    var calendarMonth by remember { mutableStateOf(initialCalender.get(Calendar.MONTH)) }
+    var calendarDay by remember { mutableStateOf(initialCalender.get(Calendar.DAY_OF_MONTH)) }
+
+    val dateFormat = remember { SimpleDateFormat("d/M/yyyy", Locale.getDefault()) }
 
     // Image Attachment
     var imageUri by remember { mutableStateOf<Uri?>(null) }
@@ -114,14 +109,36 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
     }
 
     //Update text fields when task loads from DB (using LaunchedEffect)
-    LaunchedEffect(task) {
-        task?.let {
+    LaunchedEffect(taskId) {
+        val t = withContext(Dispatchers.IO) {
+            dao.getTaskById(taskId)
+        }
+
+        task = t
+
+        t?.let {
             title = it.title
             description = it.description ?: ""
             selectedPriority = it.priority ?: "Low"
             selectedDate = it.date ?: "Select date"
-            imageUri = it.imageUri?.toUri()
+            imageUri = it.imageUri?.let { Uri.parse(it) }
+
+            if (selectedDate != "Select Date" && selectedDate.isNotBlank()) {
+                try {
+                    val dateObject = dateFormat.parse(selectedDate)
+                    dateObject?.let { date ->
+                        val cal = Calendar.getInstance()
+                        cal.time = date
+                        calendarYear = cal.get(Calendar.YEAR)
+                        calendarMonth = cal.get(Calendar.MONTH)
+                        calendarDay = cal.get(Calendar.DAY_OF_MONTH)
+                    }
+                } catch (e: Exception) {
+
+                }
+            }
         }
+
     }
 
     Scaffold(
@@ -201,9 +218,24 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
 
             // Date Picker
             Button(
-                onClick = { datePicker.show() },
+                onClick = {
+                    DatePickerDialog(
+                        context,
+                        { _, year, month, day ->
+                            selectedDate = "$day/${month + 1}/$year"
+                            calendarYear = year
+                            calendarMonth = month
+                            calendarDay = day
+
+                        },
+                        calendarYear,
+                        calendarMonth,
+                        calendarDay
+                    ).show()
+                },
                 modifier = Modifier.fillMaxWidth()
-            ) {
+
+            ){
                 Text(selectedDate)
             }
 
