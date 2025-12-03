@@ -1,8 +1,12 @@
 package np.ict.mad.mad_assignment
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,7 +34,9 @@ import kotlinx.coroutines.launch
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.navigation.ActivityNavigatorExtras
 import kotlinx.coroutines.withContext
 
 
@@ -224,6 +230,16 @@ fun TaskCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                if (!task.imageUri.isNullOrEmpty()) {
+                    Text(
+                        "Photo Attached",
+                        fontSize = 14.sp,
+                        color = Color(0xFF4CAF50)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ){
@@ -277,100 +293,4 @@ fun TaskCard(
         }
     }
 }}
-
-
-// ---------------------------------------------------
-// EDIT TASK SCREEN
-// ---------------------------------------------------
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EditTaskScreen(navController: NavHostController, taskId: Int) {
-    val context = LocalContext.current
-    val dao = DatabaseProvider.getDatabase(context).taskDao()
-    val scope = rememberCoroutineScope()
-
-    // Load existing data
-    var task by remember { mutableStateOf<Task?>(null) }
-    var isLoaded by remember { mutableStateOf(false) }
-
-    // Load task once
-    LaunchedEffect(taskId) {
-        val t = withContext(Dispatchers.IO) {
-            dao.getTaskById(taskId)
-        }
-        task = t
-        isLoaded = true
-    }
-
-    // State for the text fields
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-
-    //Update text fields when task loads from DB (using LaunchedEffect)
-    LaunchedEffect(task) {
-        task?.let {
-            title = it.title
-            description = it.description ?: ""
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Edit Task: ${task?.title ?: ""}") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
-        ) {
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Task Title") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Description") },
-                modifier = Modifier.fillMaxWidth().height(120.dp),
-                maxLines = 5
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    if (title.isNotBlank() && task != null) {
-                        //Create a copy of the original task with updated values
-                        val updatedTask = task!!.copy(title = title, description = description)
-                        scope.launch(Dispatchers.IO) {
-                            dao.updateTask(updatedTask)
-                        }
-                        navController.popBackStack()
-                    }
-                },
-
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(Color(0xFF2196F3))
-            ) {
-                Text(
-                    "Update Task",
-                    fontSize = 18.sp,
-                    color = Color.White
-                )
-            }
-        }
-
-    }
-}
 

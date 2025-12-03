@@ -1,12 +1,19 @@
 package np.ict.mad.mad_assignment
 
 import android.app.DatePickerDialog
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -31,6 +38,14 @@ fun AddTaskScreen(nav: NavController) {
     val priorities = listOf("Low", "Medium", "High")
     var expanded by remember { mutableStateOf(false) }
     var selectedPriority by remember { mutableStateOf("Low") }
+
+    // ---------------- IMAGE ATTACHMENT -----------------
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        imageUri = uri
+    }
 
     // ---------------- DATE PICKER ----------------------
     var selectedDate by remember { mutableStateOf("Select date") }
@@ -133,6 +148,31 @@ fun AddTaskScreen(nav: NavController) {
                 Text(selectedDate)
             }
 
+            // --------------- IMAGE ATTACHMENT BUTTON ----
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ){
+                Button(
+                    onClick = { imagePickerLauncher.launch("image/*")}
+                ) {
+                    Icon(Icons.Filled.AddAPhoto, contentDescription = "Attach Image")
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (imageUri == null){
+                            "Attach Photo"
+                        } else {
+                            "Change Photo"
+                        }
+                    )
+                }
+
+                if (imageUri != null) {
+                    Text("Photo Attached", color = MaterialTheme.colorScheme.primary)
+                }
+            }
+
             // ---------------- SAVE BUTTON ----------------
             Button(
                 onClick = {
@@ -141,7 +181,8 @@ fun AddTaskScreen(nav: NavController) {
                             title = title,
                             description = description,
                             priority = selectedPriority,
-                            date = selectedDate
+                            date = selectedDate,
+                            imageUri = imageUri?.toString()
                         )
 
                         scope.launch(Dispatchers.IO) {

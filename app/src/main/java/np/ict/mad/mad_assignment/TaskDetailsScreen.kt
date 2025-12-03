@@ -1,5 +1,6 @@
 package np.ict.mad.mad_assignment
 
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -7,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -16,6 +18,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +86,24 @@ fun TaskDetailsContent(task: Task) {
             Text(
                 text = task.description,
                 fontSize = 18.sp
+            )
+        }
+
+        //Display Attached Image
+        task.imageUri?.let { uriString ->
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(Uri.parse(uriString))
+                    .crossfade(true)
+                    .build(),
+
+                contentDescription = "Attached Image for ${ task.title }",
+
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 250.dp),
+
+                contentScale = ContentScale.Crop
             )
         }
 
