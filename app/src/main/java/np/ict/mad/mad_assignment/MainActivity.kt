@@ -44,7 +44,7 @@ import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.ActivityNavigatorExtras
 import kotlinx.coroutines.withContext
-
+import androidx.compose.ui.text.style.TextDecoration
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -257,12 +257,21 @@ fun TaskCard(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    val priorityColor = when (task.priority) {
+    val isDone = task.isDone
+
+    val priorityColorBase = when (task.priority) {
         "High" -> Color(0xFFFF6B6B)
         "Medium" -> Color(0xFFFFC46B)
         "Low" -> Color(0xFF6BCB77)
         else -> Color(0xFFB0BEC5)
     }
+
+    // If done, use grey to visually separate from active tasks
+    val priorityColor = if (isDone) Color(0xFF9E9E9E) else priorityColorBase
+
+    val titleColor = if (isDone) Color.Gray else Color.Unspecified
+    val titleDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None
+    val descriptionColor = if (isDone) Color.LightGray else Color.DarkGray
 
     Card(
         modifier = Modifier
@@ -279,6 +288,7 @@ fun TaskCard(
                 .padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.Top
         ) {
+            // Priority bar (or status bar if done)
             Box(
                 modifier = Modifier
                     .padding(vertical = 4.dp)
@@ -295,18 +305,19 @@ fun TaskCard(
             ) {
                 // Title
                 Text(
-                    task.title,
+                    text = task.title,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = titleColor,
+                    textDecoration = titleDecoration
                 )
 
                 // Description
                 if (task.description != null && task.description.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        task.description,
+                        text = task.description,
                         fontSize = 16.sp,
-                        color = Color.DarkGray,
+                        color = descriptionColor,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -314,7 +325,6 @@ fun TaskCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Photo + date + priority chip row
                 Column {
                     if (!task.imageUri.isNullOrEmpty()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -338,24 +348,40 @@ fun TaskCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Priority chip
-                        task.priority?.let {
+                        // ✅ Status / priority chip
+                        if (isDone) {
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(50))
-                                    .background(priorityColor.copy(alpha = 0.18f))
+                                    .background(Color(0xFFEEEEEE))
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
                                 Text(
-                                    text = "Priority: $it",
+                                    text = "Done",
                                     fontSize = 13.sp,
-                                    color = priorityColor,
+                                    color = Color(0xFF616161),
                                     fontWeight = FontWeight.Medium
                                 )
                             }
+                        } else {
+                            task.priority?.let {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(priorityColor.copy(alpha = 0.18f))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "Priority: $it",
+                                        fontSize = 13.sp,
+                                        color = priorityColor,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
                         }
 
-                        // Due date with icon
+                        // Due date with icon (unchanged)
                         task.date?.let {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(

@@ -26,6 +26,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.alpha
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +72,72 @@ fun TaskDetailsScreen(nav: NavController, taskId: Int) {
             if (task == null) {
                 Text("Loading...", fontSize = 18.sp)
             } else {
-                TaskDetailsContent(task!!)
+                // subtle fade + slide animation (same as before)
+                var appeared by remember(task!!.id) { mutableStateOf(false) }
+
+                LaunchedEffect(task!!.id) {
+                    appeared = true
+                }
+
+                val alpha by animateFloatAsState(
+                    targetValue = if (appeared) 1f else 0f,
+                    label = "detailsAlpha"
+                )
+                val offsetY by animateDpAsState(
+                    targetValue = if (appeared) 0.dp else 16.dp,
+                    label = "detailsOffset"
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .alpha(alpha)
+                        .offset(y = offsetY),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TaskDetailsContent(task!!)
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // ✅ Toggle Mark / Unmark button
+                        Button(
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                val current = task!!
+                                val updated = current.copy(isDone = !current.isDone)
+                                task = updated
+                                scope.launch(Dispatchers.IO) {
+                                    dao.updateTask(updated)
+                                }
+                            }
+                        ) {
+                            Text(
+                                text = if (task!!.isDone) "Unmark" else "Mark as done"
+                            )
+                        }
+
+                        // Delete button (same behavior, just here)
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                val current = task!!
+                                scope.launch(Dispatchers.IO) {
+                                    dao.deleteTask(current)
+                                }
+                                nav.popBackStack()
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color.Red
+                            )
+                        ) {
+                            Text("Delete")
+                        }
+                    }
+                }
             }
         }
     }
@@ -96,14 +164,12 @@ fun TaskDetailsContent(task: Task) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Title
             Text(
                 text = task.title,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
 
-            // Description
             if (!task.description.isNullOrBlank()) {
                 Text(
                     text = task.description,
@@ -111,7 +177,6 @@ fun TaskDetailsContent(task: Task) {
                 )
             }
 
-            // Display attached image
             task.imageUri?.let { uriString ->
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
@@ -127,7 +192,6 @@ fun TaskDetailsContent(task: Task) {
                 )
             }
 
-            // Priority + date row
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -166,4 +230,3 @@ fun TaskDetailsContent(task: Task) {
         }
     }
 }
-
