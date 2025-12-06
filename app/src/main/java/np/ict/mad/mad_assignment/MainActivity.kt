@@ -34,6 +34,12 @@ import kotlinx.coroutines.launch
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.ActivityNavigatorExtras
@@ -151,7 +157,6 @@ fun HomeScreen(nav: NavHostController) {
     val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
-    // Sorted Tasks
     val sortedTasks = remember(tasks) {
         tasks.sortedWith (
             compareByDescending<Task> { priorityToInt(it.priority) }.thenBy { it.id }
@@ -171,40 +176,73 @@ fun HomeScreen(nav: NavHostController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
 
-            Text(
-                text = "Your Tasks",
-                style = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
+                Text(
+                    text = "SmartTasks",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = if (sortedTasks.isEmpty())
+                        "No tasks yet"
+                    else
+                        "${sortedTasks.size} task${if (sortedTasks.size == 1) "" else "s"} total",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             if (sortedTasks.isEmpty()) {
-                Text(
-                    text = "No tasks yet!",
-                    style = TextStyle(fontSize = 18.sp, color = Color.Gray)
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "No tasks yet!",
+                            style = TextStyle(fontSize = 18.sp, color = Color.Gray)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Tap + to add your first task",
+                            style = TextStyle(fontSize = 14.sp, color = Color.Gray)
+                        )
+                    }
+                }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
                     items(sortedTasks) { task ->
                         TaskCard(
                             task = task,
-                            onClick = {nav.navigate("details/${task.id}") },
-                            onEdit = {nav.navigate("edit_task/${task.id}")},
+                            onClick = { nav.navigate("details/${task.id}") },
+                            onEdit = { nav.navigate("edit_task/${task.id}") },
                             onDelete = {
-                                scope.launch(Dispatchers.IO){
+                                scope.launch(Dispatchers.IO) {
                                     dao.deleteTask(task)
                                 }
                             }
                         )
                     }
-
+                }
+            }
         }
     }
-}}}
+}
 
 // ---------------------------------------------------
 // TASK CARD
@@ -215,62 +253,131 @@ fun TaskCard(
     task: Task,
     onClick: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,) {
+    onDelete: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
 
-    var expanded by remember { mutableStateOf(false)}
+    val priorityColor = when (task.priority) {
+        "High" -> Color(0xFFFF6B6B)
+        "Medium" -> Color(0xFFFFC46B)
+        "Low" -> Color(0xFF6BCB77)
+        else -> Color(0xFFB0BEC5)
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(3.dp)
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth()
-                .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min) // so the bar can fill height
+                .padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.Top
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(task.title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 4.dp)
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(priorityColor)
+            )
 
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // Title
+                Text(
+                    task.title,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // Description
                 if (task.description != null && task.description.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         task.description,
                         fontSize = 16.sp,
                         color = Color.DarkGray,
-                        maxLines = 2
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                if (!task.imageUri.isNullOrEmpty()) {
-                    Text(
-                        "Photo Attached",
-                        fontSize = 14.sp,
-                        color = Color(0xFF4CAF50)
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ){
-                    task.priority?.let{
-                        Text("Priority: $it", fontSize = 14.sp)
+                // Photo + date + priority chip row
+                Column {
+                    if (!task.imageUri.isNullOrEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Image,
+                                contentDescription = "Photo Attached",
+                                modifier = Modifier.size(16.dp),
+                                tint = Color(0xFF4CAF50)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "Photo Attached",
+                                fontSize = 14.sp,
+                                color = Color(0xFF4CAF50)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
 
-                    task.date?.let {
-                        Text("Due Date: $it", fontSize = 14.sp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Priority chip
+                        task.priority?.let {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(priorityColor.copy(alpha = 0.18f))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "Priority: $it",
+                                    fontSize = 13.sp,
+                                    color = priorityColor,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        // Due date with icon
+                        task.date?.let {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarMonth,
+                                    contentDescription = "Due Date",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Color.Gray
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Due Date: $it",
+                                    fontSize = 13.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            Box{
-                IconButton(onClick = { expanded = true}) {
+            Box {
+                IconButton(onClick = { expanded = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Options")
                 }
 
@@ -279,7 +386,7 @@ fun TaskCard(
                     onDismissRequest = { expanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = {Text("Edit")},
+                        text = { Text("Edit") },
                         onClick = {
                             expanded = false
                             onEdit()
@@ -287,15 +394,16 @@ fun TaskCard(
                     )
 
                     DropdownMenuItem(
-                        text = {Text("Delete", color = Color.Red)},
+                        text = { Text("Delete", color = Color.Red) },
                         onClick = {
                             expanded = false
                             onDelete()
                         }
                     )
                 }
-
+            }
         }
     }
-}}
+}
+
 
