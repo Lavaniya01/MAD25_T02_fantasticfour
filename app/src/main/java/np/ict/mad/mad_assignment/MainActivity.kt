@@ -45,13 +45,30 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.ActivityNavigatorExtras
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.text.style.TextDecoration
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import android.widget.Toast
+import com.google.firebase.FirebaseApp
+
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        FirebaseApp.initializeApp(this)
 
         setContent {
-            AppNavigation()
+            var isDarkMode by remember { mutableStateOf(false) }
+
+            AppTheme(isDarkTheme = isDarkMode) {
+                AppNavigation(
+                    isDarkMode =  isDarkMode,
+                    onToggleTheme = { isDarkMode = !isDarkMode }
+                )
+            }
+
         }
     }
 }
@@ -64,14 +81,24 @@ fun priorityToInt(priority: String?): Int{
         else -> 0
     }
 }
-
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    isDarkMode : Boolean ,
+    onToggleTheme : () -> Unit
+) {
     val nav = rememberNavController()
 
     NavHost(navController = nav, startDestination = Routes.Start) {
         composable(Routes.Start) { StartingScreen(nav) }
-        composable(Routes.Home) { HomeScreen(nav) }
+        composable(Routes.Login) { LoginScreen(nav) }
+        composable(Routes.Signup) { SignupScreen(nav) }
+        composable(Routes.Home) {
+            HomeScreen(
+                nav = nav,
+                isDarkMode = isDarkMode,
+                onToggleTheme = onToggleTheme
+            )
+        }
         composable(Routes.AddTask) {AddTaskScreen(nav) }
 
         composable("edit_task/{taskId}"){ backStackEntry ->
@@ -86,6 +113,33 @@ fun AppNavigation() {
             TaskDetailsScreen(nav, id)
         }
     }
+}
+@Composable
+fun AppTheme(isDarkTheme: Boolean, content: @Composable () -> Unit) {
+    val colorScheme = if (isDarkTheme) {
+        darkColorScheme(
+            primary = Color(0xFF90CAF9),
+            background = Color(0xFF121212),
+            surface = Color(0xFF1E1E1E),
+            onPrimary = Color.Black,
+            onBackground = Color.White,
+            onSurface = Color.White
+        )
+    } else {
+        lightColorScheme(
+            primary = Color(0xFF1565C0),
+            background = Color.White,
+            surface = Color.White,
+            onPrimary = Color.White,
+            onBackground = Color.Black,
+            onSurface = Color.Black
+        )
+    }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        content = content
+    )
 }
 
 @Composable
@@ -128,7 +182,7 @@ fun StartingScreen(nav: NavHostController) {
 
             Button(
                 onClick = {
-                    nav.navigate(Routes.Home) {
+                    nav.navigate(Routes.Login) {
                         popUpTo(Routes.Start) { inclusive = true }
                     }
                 },
@@ -139,7 +193,7 @@ fun StartingScreen(nav: NavHostController) {
                 shape = MaterialTheme.shapes.medium
             ) {
                 Text(
-                    text = "Let's Get Started",
+                    text = "Login",
                     fontSize = 18.sp,
                     color = Color.White,
                     fontWeight = FontWeight.Bold
@@ -149,9 +203,151 @@ fun StartingScreen(nav: NavHostController) {
     }
 }
 
+@Composable
+fun LoginScreen(nav: NavHostController) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("Login", style = MaterialTheme.typography.headlineMedium)
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        TextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") },
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        TextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = {
+            val auth = FirebaseAuth.getInstance()
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        nav.navigate(Routes.Home) {
+                            popUpTo(Routes.Login) { inclusive = true }
+                        }
+                    } else {
+                        errorMessage = task.exception?.localizedMessage
+                    }
+                }
+        }) {
+            Text("Login")
+        }
+
+
+        errorMessage?.let {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(it, color = Color.Red)
+        }
+        Text(
+            text = "Don't have an account? Sign Up",
+            modifier = Modifier.clickable { nav.navigate(Routes.Signup) },
+            color = Color.Blue
+        )
+    }
+}
 
 @Composable
-fun HomeScreen(nav: NavHostController) {
+fun SignupScreen(nav: NavHostController) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        TextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation()
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = {
+                FirebaseAuth.getInstance()
+                    .createUserWithEmailAndPassword(email, password)
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            Toast.makeText(context, "Signup Successful!", Toast.LENGTH_SHORT).show()
+                            nav.navigate(Routes.Home) {
+                                popUpTo(Routes.Signup) { inclusive = true }
+                            }
+                        } else {
+                            Toast.makeText(context, task.exception?.message ?: "Signup Failed", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+            },
+            modifier = Modifier.fillMaxWidth(0.6f)
+        ) {
+            Text("Sign Up")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Already have an account? Log in",
+            modifier = Modifier.clickable { nav.navigate(Routes.Login) }
+        )
+    }
+}
+@Composable
+fun HomeScreen(
+    nav: NavHostController,
+    isDarkMode: Boolean,
+    onToggleTheme: () -> Unit
+) {
+    // Rest of HomeScreen UI
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Button(
+            onClick = onToggleTheme,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        ) {
+            Text("Toggle Theme")
+        }
+    }
     val context = LocalContext.current
     val dao = DatabaseProvider.getDatabase(context).taskDao()
     val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
@@ -162,7 +358,6 @@ fun HomeScreen(nav: NavHostController) {
             compareByDescending<Task> { priorityToInt(it.priority) }.thenBy { it.id }
         )
     }
-
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
@@ -239,6 +434,17 @@ fun HomeScreen(nav: NavHostController) {
                         )
                     }
                 }
+            }
+        }
+        Box(modifier = Modifier.fillMaxSize()) {
+            Button(
+                onClick = onToggleTheme,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Text("Toggle Theme")
+
             }
         }
     }
