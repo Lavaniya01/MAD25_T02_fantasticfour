@@ -9,7 +9,7 @@ Team members:
 Lavaniya D/O Rajamoorthi (S10262519) github username: Lavaniya01  
 Phyu Hnin Thant github username: hinamista  
 Ethan Chan github username: Hiiamnubkillme   
-Marcus Tham Wei Jun github username: MarcTWJ
+Marcus Tham Wei Jun (S10257775E) github username: MarcTWJ
 
 📱 SmartTasks – App Information:  
 SmartTasks is a simple productivity application designed to help users manage their daily tasks efficiently. The app provides a clean and minimal interface for adding tasks, viewing them, and keeping track of what needs to be done.
