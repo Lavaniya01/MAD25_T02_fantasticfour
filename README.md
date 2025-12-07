@@ -42,5 +42,9 @@ Stage 1 Features (Interim):
 - CRUD operations (add/view/update/delete tasks)
 
 Task(s) and feature(s) allocation of each member in the team for 
-Stage 1:
-Lavaniya: Room Database, Basic UI with add task, date and priority picker
+Stage 1: 
+Lavaniya:  Room Database, Basic UI with add task, date and priority picker
+
+Task(s) and feature(s) allocation of each member in the team for 
+Stage 2: 
+Lavaniya: Notifications
