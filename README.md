@@ -40,3 +40,7 @@ Stage 1 Features (Interim):
 - Home screen UI layout (LazyColumn placeholder for task list)
 - Room Database setup (Entity, DAO, AppDatabase, DatabaseProvider)
 - CRUD operations (add/view/update/delete tasks)
+
+Task(s) and feature(s) allocation of each member in the team for 
+Stage 1:
+Lavaniya: Room Database, Basic UI with add task, date and priority picker
