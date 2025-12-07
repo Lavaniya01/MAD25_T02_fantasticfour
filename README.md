@@ -15,15 +15,15 @@ Marcus Tham Wei Jun github username: MarcTWJ
 SmartTasks is a simple productivity application designed to help users manage their daily tasks efficiently. The app provides a clean and minimal interface for adding tasks, viewing them, and keeping track of what needs to be done.
 
 🧭 Purpose of the App:  
-To help users stay organized
-To provide a quick way to record tasks
-To offer a clean and distraction-free productivity tool
+- To help users stay organized
+- To provide a quick way to record tasks
+- To offer a clean and distraction-free productivity tool
 
 🎯 Key Objectives:  
-Allow users to create and view tasks easily
-Enable image attachments for better task clarity
-Store tasks locally using Room Database
-Provide a simple, intuitive UI using Jetpack Compose
+- Allow users to create and view tasks easily
+- Enable image attachments for better task clarity
+- Store tasks locally using Room Database
+- Provide a simple, intuitive UI using Jetpack Compose
 
 📂 App Category:  
 Productivity / Task Management
