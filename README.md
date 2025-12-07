@@ -46,7 +46,11 @@ Stage 1:
 
 Lavaniya:  Room Database, Basic UI with add task, date and priority picker
 
+Ethan: Edit & Delete Task features, Image Attachment, Sorting Tasks Based on Priority.
+
 Task(s) and feature(s) allocation of each member in the team for 
 Stage 2:  
 
 Lavaniya: Notifications
+
+Ethan: Setting Screen, Light/ Dark Mode.
