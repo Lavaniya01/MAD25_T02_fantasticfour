@@ -57,7 +57,7 @@ Stage 2:
 
 Lavaniya: Notifications
 
-Ethan: Setting Screen
+Ethan: Setting Screen, Folders & Change Password.
 
 Hnin Thant: Task Categories, Search bar
 
