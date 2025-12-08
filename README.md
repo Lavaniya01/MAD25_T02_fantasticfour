@@ -7,7 +7,7 @@ educational purposes.
 
 Team members:  
 Lavaniya D/O Rajamoorthi (S10262519) github username: Lavaniya01  
-Phyu Hnin Thant github username: hinamista  
+Phyu Hnin Thant (S10243519H) github username: hinamista  
 Ethan Chan github username: Hiiamnubkillme   
 Marcus Tham Wei Jun (S10257775E) github username: MarcTWJ
 
@@ -50,11 +50,15 @@ Lavaniya:  Room Database, Basic UI with add task, date and priority picker
 
 Ethan: Edit & Delete Task features, Image Attachment, Sorting Tasks Based on Priority.
 
+Hnin Thant: Better Homescreen and Task Details screen UI, toggle button for marking/unmarking tasks
+
 Task(s) and feature(s) allocation of each member in the team for 
 Stage 2:  
 
 Lavaniya: Notifications
 
 Ethan: Setting Screen
+
+Hnin Thant: Task Categories, Search bar
 
 Marcus : Ideation and implementation on UI/UX based on other industry-level task apps + Working on improving the firebase login further.
