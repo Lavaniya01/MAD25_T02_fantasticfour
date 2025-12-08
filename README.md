@@ -8,7 +8,7 @@ educational purposes.
 Team members:  
 Lavaniya D/O Rajamoorthi (S10262519) github username: Lavaniya01  
 Phyu Hnin Thant (S10243519H) github username: hinamista  
-Ethan Chan github username: Hiiamnubkillme   
+Ethan Chan (S10257966C) github username: Hiiamnubkillme   
 Marcus Tham Wei Jun (S10257775E) github username: MarcTWJ
 
 📱 SmartTasks – App Information:  
