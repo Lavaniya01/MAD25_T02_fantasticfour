@@ -12,7 +12,10 @@ data class Task(
     val date: String? = null,
     val priority: String? = null,
     val imageUri: String? = null,
-    val isDone: Boolean = false
+    val isDone: Boolean = false,
+    // store as epoch millis (Long) to avoid timezone parsing issues
+    val dueAtMillis: Long = 0L
+
 )
 
 

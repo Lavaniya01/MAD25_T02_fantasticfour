@@ -51,6 +51,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import android.widget.Toast
 import com.google.firebase.FirebaseApp
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
 
 
 
@@ -60,15 +63,26 @@ class MainActivity : ComponentActivity() {
         FirebaseApp.initializeApp(this)
 
         setContent {
+
+            // ✅ Request notification permission on Android 13+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission()
+                ) { /* granted/denied - no action needed for now */ }
+
+                LaunchedEffect(Unit) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+
             var isDarkMode by remember { mutableStateOf(false) }
 
             AppTheme(isDarkTheme = isDarkMode) {
                 AppNavigation(
-                    isDarkMode =  isDarkMode,
+                    isDarkMode = isDarkMode,
                     onToggleTheme = { isDarkMode = !isDarkMode }
                 )
             }
-
         }
     }
 }
