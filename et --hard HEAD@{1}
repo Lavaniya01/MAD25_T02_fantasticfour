@@ -1,0 +1,10 @@
+[33mbabab5a[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: pull: Fast-forward
+[33m71e904f[m HEAD@{1}: commit: Added starting page, added logo
+[33mf9a8df4[m HEAD@{2}: pull origin main --no-rebase: Fast-forward
+[33me713f2e[m HEAD@{3}: commit: Added priority, date and view task
+[33mc226eb5[m HEAD@{4}: pull origin main --no-rebase: Merge made by the 'ort' strategy.
+[33m3f71f8a[m HEAD@{5}: commit: Add task feature working
+[33mb343884[m HEAD@{6}: commit: Added SmartTasks minimal starting screen UI
+[33md485e21[m HEAD@{7}: commit: Initial project setup with Room database structure
+[33m90a8118[m HEAD@{8}: commit: Initial android studio project
+[33m95835a1[m HEAD@{9}: clone: from https://github.com/Lavaniya01/MAD25_T02_fantasticfour.git

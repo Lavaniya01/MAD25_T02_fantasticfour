@@ -1,34 +1,60 @@
 package np.ict.mad.mad_assignment
 
-import android.net.Uri
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import androidx.core.net.toUri
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.ui.draw.alpha
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,7 +123,7 @@ fun TaskDetailsScreen(nav: NavController, taskId: Int) {
                 ) {
                     TaskDetailsContent(task!!)
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.width(0.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -110,22 +136,35 @@ fun TaskDetailsScreen(nav: NavController, taskId: Int) {
                                 val current = task!!
                                 val updated = current.copy(isDone = !current.isDone)
                                 task = updated
+
                                 scope.launch(Dispatchers.IO) {
                                     dao.updateTask(updated)
+
+                                    // 🔔 Cancel reminder when done; reschedule when unmarked
+                                    if (updated.isDone) {
+                                        ReminderScheduler.cancelDueReminder(context, updated.id)
+                                    } else {
+                                        ReminderScheduler.scheduleDueReminder(
+                                            context = context,
+                                            taskId = updated.id,
+                                            title = updated.title,
+                                            dueAtMillis = updated.dueAtMillis
+                                        )
+                                    }
                                 }
                             }
                         ) {
-                            Text(
-                                text = if (task!!.isDone) "Unmark" else "Mark as done"
-                            )
+                            Text(text = if (task!!.isDone) "Unmark" else "Mark as done")
                         }
 
-                        // Delete button (same behavior, just here)
+                        // Delete button
                         OutlinedButton(
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 val current = task!!
                                 scope.launch(Dispatchers.IO) {
+                                    // 🔔 Cancel reminder before deleting
+                                    ReminderScheduler.cancelDueReminder(context, current.id)
                                     dao.deleteTask(current)
                                 }
                                 nav.popBackStack()
@@ -188,7 +227,7 @@ fun TaskDetailsContent(task: Task) {
                         .fillMaxWidth()
                         .heightIn(min = 150.dp, max = 350.dp)
                         .clip(RoundedCornerShape(16.dp)),
-                    contentScale = ContentScale.Crop
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
             }
 

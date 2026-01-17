@@ -2,6 +2,7 @@ package np.ict.mad.mad_assignment
 
 import android.app.DatePickerDialog
 import android.net.Uri
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -39,16 +40,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
-import androidx.core.net.toUri
 import java.util.Calendar
 import java.util.Locale
 import java.text.SimpleDateFormat
@@ -65,16 +65,6 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
 
     // Load existing data
     var task by remember { mutableStateOf<Task?>(null) }
-    var isLoaded by remember { mutableStateOf(false) }
-
-    // Load task once
-    LaunchedEffect(taskId) {
-        val t = withContext(Dispatchers.IO) {
-            dao.getTaskById(taskId)
-        }
-        task = t
-        isLoaded = true
-    }
 
     // State for the text fields
     var title by remember { mutableStateOf("") }
@@ -86,14 +76,17 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
     var selectedPriority by remember { mutableStateOf("Low") }
 
     // Date Picker
-    val initialCalender = Calendar.getInstance()
+    val initialCalendar = Calendar.getInstance()
     var selectedDate by remember { mutableStateOf("Select Date") }
 
-    var calendarYear by remember { mutableStateOf(initialCalender.get(Calendar.YEAR)) }
-    var calendarMonth by remember { mutableStateOf(initialCalender.get(Calendar.MONTH)) }
-    var calendarDay by remember { mutableStateOf(initialCalender.get(Calendar.DAY_OF_MONTH)) }
+    var calendarYear by remember { mutableStateOf(initialCalendar.get(Calendar.YEAR)) }
+    var calendarMonth by remember { mutableStateOf(initialCalendar.get(Calendar.MONTH)) }
+    var calendarDay by remember { mutableStateOf(initialCalendar.get(Calendar.DAY_OF_MONTH)) }
 
     val dateFormat = remember { SimpleDateFormat("d/M/yyyy", Locale.getDefault()) }
+
+    // NEW: dueAtMillis state (epoch millis)
+    var dueAtMillis by remember { mutableStateOf(0L) }
 
     // Image Attachment
     var imageUri by remember { mutableStateOf<Uri?>(null) }
@@ -102,18 +95,17 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            context.contentResolver
-                .takePersistableUriPermission(it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION )
+            context.contentResolver.takePersistableUriPermission(
+                it,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
         }
         imageUri = uri
     }
 
-    //Update text fields when task loads from DB (using LaunchedEffect)
+    // Load task once & populate UI state
     LaunchedEffect(taskId) {
-        val t = withContext(Dispatchers.IO) {
-            dao.getTaskById(taskId)
-        }
-
+        val t = withContext(Dispatchers.IO) { dao.getTaskById(taskId) }
         task = t
 
         t?.let {
@@ -121,8 +113,12 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
             description = it.description ?: ""
             selectedPriority = it.priority ?: "Low"
             selectedDate = it.date ?: "Select date"
-            imageUri = it.imageUri?.let { Uri.parse(it) }
+            imageUri = it.imageUri?.let { s -> Uri.parse(s) }
 
+            // NEW: pull dueAtMillis from DB
+            dueAtMillis = it.dueAtMillis
+
+            // For date picker defaults (only affects the shown picker date)
             if (selectedDate != "Select Date" && selectedDate.isNotBlank()) {
                 try {
                     val dateObject = dateFormat.parse(selectedDate)
@@ -133,12 +129,11 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                         calendarMonth = cal.get(Calendar.MONTH)
                         calendarDay = cal.get(Calendar.DAY_OF_MONTH)
                     }
-                } catch (e: Exception) {
-
+                } catch (_: Exception) {
+                    // ignore parse errors
                 }
             }
         }
-
     }
 
     Scaffold(
@@ -158,7 +153,6 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp),
-
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             // Title Input
@@ -174,12 +168,14 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                 value = description,
                 onValueChange = { description = it },
                 label = { Text("Description") },
-                modifier = Modifier.fillMaxWidth().height(120.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
                 maxLines = 5
             )
 
             // Priority Dropdown
-            Column{
+            Column {
                 Text("Priority", style = MaterialTheme.typography.bodyMedium)
 
                 OutlinedTextField(
@@ -189,7 +185,7 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Select Priority") },
                     trailingIcon = {
-                        IconButton(onClick = { expanded = !expanded }){
+                        IconButton(onClick = { expanded = !expanded }) {
                             Icon(
                                 imageVector = Icons.Filled.ArrowDropDown,
                                 contentDescription = null
@@ -201,7 +197,7 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                 DropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
-                ){
+                ) {
                     priorities.forEach { p ->
                         DropdownMenuItem(
                             text = { Text(p) },
@@ -212,8 +208,6 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                         )
                     }
                 }
-
-
             }
 
             // Date Picker
@@ -227,6 +221,16 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                             calendarMonth = month
                             calendarDay = day
 
+                            // NEW: also update dueAtMillis (set to end-of-day)
+                            val cal = Calendar.getInstance()
+                            cal.set(Calendar.YEAR, year)
+                            cal.set(Calendar.MONTH, month)
+                            cal.set(Calendar.DAY_OF_MONTH, day)
+                            cal.set(Calendar.HOUR_OF_DAY, 23)
+                            cal.set(Calendar.MINUTE, 59)
+                            cal.set(Calendar.SECOND, 0)
+                            cal.set(Calendar.MILLISECOND, 0)
+                            dueAtMillis = cal.timeInMillis
                         },
                         calendarYear,
                         calendarMonth,
@@ -234,8 +238,7 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                     ).show()
                 },
                 modifier = Modifier.fillMaxWidth()
-
-            ){
+            ) {
                 Text(selectedDate)
             }
 
@@ -246,17 +249,11 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Button(
-                    onClick = { imagePickerLauncher.launch("image/*")}
+                    onClick = { imagePickerLauncher.launch("image/*") }
                 ) {
                     Icon(Icons.Filled.AddAPhoto, contentDescription = "Attach Image")
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (imageUri == null){
-                            "Attach Photo"
-                        } else {
-                            "Change Photo"
-                        }
-                    )
+                    Text(if (imageUri == null) "Attach Photo" else "Change Photo")
                 }
 
                 if (imageUri != null) {
@@ -268,21 +265,30 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
             Button(
                 onClick = {
                     if (title.isNotBlank() && task != null) {
-                        //Create a copy of the original task with updated values
                         val updatedTask = task!!.copy(
                             title = title,
                             description = description,
                             priority = selectedPriority,
                             date = selectedDate,
-                            imageUri = imageUri?.toString()
+                            imageUri = imageUri?.toString(),
+                            dueAtMillis = dueAtMillis
                         )
+
                         scope.launch(Dispatchers.IO) {
                             dao.updateTask(updatedTask)
+
+                            // 🔔 Reschedule reminder after update
+                            ReminderScheduler.scheduleDueReminder(
+                                context = context,
+                                taskId = updatedTask.id,
+                                title = updatedTask.title,
+                                dueAtMillis = updatedTask.dueAtMillis
+                            )
                         }
+
                         navController.popBackStack()
                     }
                 },
-
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(Color(0xFF2196F3))
             ) {
@@ -293,6 +299,5 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                 )
             }
         }
-
     }
 }

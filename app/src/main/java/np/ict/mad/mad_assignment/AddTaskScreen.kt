@@ -3,7 +3,6 @@ package np.ict.mad.mad_assignment
 import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -44,23 +43,49 @@ fun AddTaskScreen(nav: NavController) {
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { context.contentResolver.takePersistableUriPermission(it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        // If you keep GetContent, persistable permission may fail for some providers.
+        // For demo/testing this is fine; ignore SecurityException if it happens.
+        uri?.let {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    it,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: SecurityException) { }
+        }
         imageUri = uri
     }
 
     // ---------------- DATE PICKER ----------------------
     var selectedDate by remember { mutableStateOf("Select date") }
 
+    // Real due date storage (epoch millis). In demo mode we will override this.
+    var dueAtMillis by remember { mutableStateOf(0L) }
+
     val calendar = Calendar.getInstance()
     val datePicker = DatePickerDialog(
         context,
         { _, year, month, day ->
             selectedDate = "$day/${month + 1}/$year"
+
+            // Normal behaviour: due at end of selected day (23:59)
+            val cal = Calendar.getInstance()
+            cal.set(Calendar.YEAR, year)
+            cal.set(Calendar.MONTH, month)
+            cal.set(Calendar.DAY_OF_MONTH, day)
+            cal.set(Calendar.HOUR_OF_DAY, 23)
+            cal.set(Calendar.MINUTE, 59)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            dueAtMillis = cal.timeInMillis
         },
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
         calendar.get(Calendar.DAY_OF_MONTH)
     )
+
+    // ✅ DEMO MODE toggle: set true to make notifications trigger quickly
+    val DEMO_MODE = true
 
     Scaffold(
         topBar = {
@@ -154,19 +179,13 @@ fun AddTaskScreen(nav: NavController) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
-            ){
+            ) {
                 Button(
-                    onClick = { imagePickerLauncher.launch("image/*")}
+                    onClick = { imagePickerLauncher.launch("image/*") }
                 ) {
                     Icon(Icons.Filled.AddAPhoto, contentDescription = "Attach Image")
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (imageUri == null){
-                            "Attach Photo"
-                        } else {
-                            "Change Photo"
-                        }
-                    )
+                    Text(if (imageUri == null) "Attach Photo" else "Change Photo")
                 }
 
                 if (imageUri != null) {
@@ -178,18 +197,36 @@ fun AddTaskScreen(nav: NavController) {
             Button(
                 onClick = {
                     if (title.isNotBlank()) {
+
+                        // 🔴 DEMO MODE: force due time to 2 minutes from now
+                        val finalDueAtMillis =
+                            if (DEMO_MODE) System.currentTimeMillis() + 2 * 60_000L
+                            else dueAtMillis
+
+                        val finalDateLabel =
+                            if (DEMO_MODE) "Demo: due in 2 min" else selectedDate
+
                         val newTask = Task(
                             title = title,
                             description = description,
                             priority = selectedPriority,
-                            date = selectedDate,
-                            imageUri = imageUri?.toString()
+                            date = finalDateLabel,
+                            imageUri = imageUri?.toString(),
+                            dueAtMillis = finalDueAtMillis
                         )
 
                         scope.launch(Dispatchers.IO) {
-                            DatabaseProvider.getDatabase(context)
-                                .taskDao()
-                                .insertTask(newTask)
+                            val dao = DatabaseProvider.getDatabase(context).taskDao()
+                            val newId = dao.insertTask(newTask) // must return Long in TaskDao
+
+                            // 🔔 Schedule reminder (Demo: 1 min before)
+                            ReminderScheduler.scheduleDueReminder(
+                                context = context,
+                                taskId = newId.toInt(),
+                                title = newTask.title,
+                                dueAtMillis = newTask.dueAtMillis,
+                                remindBeforeMillis = if (DEMO_MODE) 60_000L else 60 * 60 * 1000L
+                            )
                         }
 
                         nav.popBackStack()
