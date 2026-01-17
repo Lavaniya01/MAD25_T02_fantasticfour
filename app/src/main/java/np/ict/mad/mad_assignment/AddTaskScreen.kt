@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddAPhoto
@@ -33,33 +32,21 @@ fun AddTaskScreen(nav: NavController) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
-    // ---------------- PRIORITY DROPDOWN ----------------
+    // ---------------- PRIORITY ----------------
     val priorities = listOf("Low", "Medium", "High")
     var expanded by remember { mutableStateOf(false) }
     var selectedPriority by remember { mutableStateOf("Low") }
 
-    // ---------------- IMAGE ATTACHMENT -----------------
+    // ---------------- IMAGE ----------------
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        // If you keep GetContent, persistable permission may fail for some providers.
-        // For demo/testing this is fine; ignore SecurityException if it happens.
-        uri?.let {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    it,
-                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (_: SecurityException) { }
-        }
+    ) { uri ->
         imageUri = uri
     }
 
-    // ---------------- DATE PICKER ----------------------
+    // ---------------- DATE ----------------
     var selectedDate by remember { mutableStateOf("Select date") }
-
-    // Real due date storage (epoch millis). In demo mode we will override this.
     var dueAtMillis by remember { mutableStateOf(0L) }
 
     val calendar = Calendar.getInstance()
@@ -68,7 +55,6 @@ fun AddTaskScreen(nav: NavController) {
         { _, year, month, day ->
             selectedDate = "$day/${month + 1}/$year"
 
-            // Normal behaviour: due at end of selected day (23:59)
             val cal = Calendar.getInstance()
             cal.set(Calendar.YEAR, year)
             cal.set(Calendar.MONTH, month)
@@ -77,15 +63,13 @@ fun AddTaskScreen(nav: NavController) {
             cal.set(Calendar.MINUTE, 59)
             cal.set(Calendar.SECOND, 0)
             cal.set(Calendar.MILLISECOND, 0)
+
             dueAtMillis = cal.timeInMillis
         },
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
         calendar.get(Calendar.DAY_OF_MONTH)
     )
-
-    // ✅ DEMO MODE toggle: set true to make notifications trigger quickly
-    val DEMO_MODE = true
 
     Scaffold(
         topBar = {
@@ -111,7 +95,7 @@ fun AddTaskScreen(nav: NavController) {
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
 
-            // ---------------- TITLE -------------------
+            // -------- TITLE --------
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -119,7 +103,7 @@ fun AddTaskScreen(nav: NavController) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // ---------------- DESCRIPTION --------------
+            // -------- DESCRIPTION --------
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
@@ -130,35 +114,28 @@ fun AddTaskScreen(nav: NavController) {
                 maxLines = 5
             )
 
-            // ---------------- PRIORITY DROPDOWN --------
+            // -------- PRIORITY --------
             Column {
-                Text("Priority", style = MaterialTheme.typography.bodyMedium)
+                Text("Priority")
 
                 OutlinedTextField(
                     value = selectedPriority,
                     onValueChange = {},
                     readOnly = true,
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Select Priority") },
                     trailingIcon = {
                         IconButton(onClick = { expanded = !expanded }) {
-                            Icon(
-                                imageVector = Icons.Filled.ArrowDropDown,
-                                contentDescription = null
-                            )
+                            Icon(Icons.Filled.ArrowDropDown, null)
                         }
                     }
                 )
 
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    priorities.forEach { p ->
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    priorities.forEach {
                         DropdownMenuItem(
-                            text = { Text(p) },
+                            text = { Text(it) },
                             onClick = {
-                                selectedPriority = p
+                                selectedPriority = it
                                 expanded = false
                             }
                         )
@@ -166,7 +143,7 @@ fun AddTaskScreen(nav: NavController) {
                 }
             }
 
-            // ---------------- DATE PICKER BUTTON --------
+            // -------- DATE PICKER --------
             Button(
                 onClick = { datePicker.show() },
                 modifier = Modifier.fillMaxWidth()
@@ -174,16 +151,14 @@ fun AddTaskScreen(nav: NavController) {
                 Text(selectedDate)
             }
 
-            // --------------- IMAGE ATTACHMENT BUTTON ----
+            // -------- IMAGE --------
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = { imagePickerLauncher.launch("image/*") }
-                ) {
-                    Icon(Icons.Filled.AddAPhoto, contentDescription = "Attach Image")
+                Button(onClick = { imagePickerLauncher.launch("image/*") }) {
+                    Icon(Icons.Filled.AddAPhoto, null)
                     Spacer(Modifier.width(8.dp))
                     Text(if (imageUri == null) "Attach Photo" else "Change Photo")
                 }
@@ -193,47 +168,42 @@ fun AddTaskScreen(nav: NavController) {
                 }
             }
 
-            // ---------------- SAVE BUTTON ----------------
+            // -------- SAVE BUTTON --------
             Button(
                 onClick = {
                     if (title.isNotBlank()) {
 
-                        // 🔴 DEMO MODE: force due time to 2 minutes from now
+                        // 🔴 TEST ONLY: force due time to 30 minutes from now
+                        // Reminder time already passed → notification fires in ~10s
                         val finalDueAtMillis =
-                            if (DEMO_MODE) System.currentTimeMillis() + 2 * 60_000L
-                            else dueAtMillis
-
-                        val finalDateLabel =
-                            if (DEMO_MODE) "Demo: due in 2 min" else selectedDate
+                            System.currentTimeMillis() + 30 * 60_000L
 
                         val newTask = Task(
                             title = title,
                             description = description,
                             priority = selectedPriority,
-                            date = finalDateLabel,
+                            date = "Test: due in 30 min",
                             imageUri = imageUri?.toString(),
                             dueAtMillis = finalDueAtMillis
                         )
 
                         scope.launch(Dispatchers.IO) {
-                            val dao = DatabaseProvider.getDatabase(context).taskDao()
-                            val newId = dao.insertTask(newTask) // must return Long in TaskDao
+                            val dao =
+                                DatabaseProvider.getDatabase(context).taskDao()
+                            val newId = dao.insertTask(newTask)
 
-                            // 🔔 Schedule reminder (Demo: 1 min before)
                             ReminderScheduler.scheduleDueReminder(
                                 context = context,
                                 taskId = newId.toInt(),
                                 title = newTask.title,
-                                dueAtMillis = newTask.dueAtMillis,
-                                remindBeforeMillis = if (DEMO_MODE) 60_000L else 60 * 60 * 1000L
+                                dueAtMillis = newTask.dueAtMillis
                             )
                         }
 
                         nav.popBackStack()
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save Task")
             }

@@ -15,13 +15,20 @@ object ReminderScheduler {
         taskId: Int,
         title: String,
         dueAtMillis: Long,
-        remindBeforeMillis: Long = 60 * 60 * 1000L // 1 hour before (change if you want)
+        remindBeforeMillis: Long = 60 * 60 * 1000L
     ) {
         if (dueAtMillis <= 0L) return
 
         val triggerAt = dueAtMillis - remindBeforeMillis
-        val delay = triggerAt - System.currentTimeMillis()
-        if (delay <= 0L) return
+        val now = System.currentTimeMillis()
+
+        val delay =
+            if (triggerAt <= now) {
+                // Missed reminder time → notify soon
+                10_000L
+            } else {
+                triggerAt - now
+            }
 
         val data = workDataOf(
             "taskId" to taskId,
@@ -35,7 +42,7 @@ object ReminderScheduler {
 
         WorkManager.getInstance(context).enqueueUniqueWork(
             uniqueName(taskId),
-            ExistingWorkPolicy.REPLACE, // if date/title changes, replace old reminder
+            ExistingWorkPolicy.REPLACE,
             request
         )
     }
