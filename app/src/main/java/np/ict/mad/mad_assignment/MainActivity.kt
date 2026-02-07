@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import android.widget.Toast
 import com.google.firebase.FirebaseApp
 import android.Manifest
+import android.content.Context
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.material.icons.filled.CreateNewFolder
@@ -61,6 +62,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import np.ict.mad.mad_assignment.model.Folder
 import np.ict.mad.mad_assignment.model.TaskDao
+import androidx.core.content.edit
 
 
 class MainActivity : ComponentActivity() {
@@ -272,12 +274,10 @@ fun LoginScreen(nav: NavHostController) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        TextField(
+        PasswordField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation()
+            label = "Password"
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -332,11 +332,10 @@ fun SignupScreen(nav: NavHostController) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextField(
+        PasswordField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation()
+            label = "Password"
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -347,12 +346,25 @@ fun SignupScreen(nav: NavHostController) {
                     .createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            Toast.makeText(context, "Signup Successful!", Toast.LENGTH_SHORT).show()
-                            nav.navigate(Routes.Home) {
-                                popUpTo(Routes.Signup) { inclusive = true }
+                            // 1. SAVE TO SHARED PREFERENCES (for your Change Password screen)
+                            val sharedPreferences = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+                            sharedPreferences.edit {
+                                putString("password", password)
                             }
-                        } else {
-                            Toast.makeText(context, task.exception?.message ?: "Signup Failed", Toast.LENGTH_SHORT).show()
+
+                            // 2. SHOW SUCCESS MESSAGE
+                            android.widget.Toast.makeText(
+                                context,
+                                "Signup Successful! Welcome aboard.",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+
+                            // 3. NAVIGATE TO HOME
+                            nav.navigate(Routes.Home)
+
+                            // Show error if signup fails
+                            val error = task.exception?.message ?: "Signup failed"
+                            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
                         }
                     }
             },

@@ -42,7 +42,8 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
 
     // ---------------- PRIORITY ----------------
     val priorities = listOf("Low", "Medium", "High")
-    var expanded by remember { mutableStateOf(false) }
+    var folderExpanded by remember { mutableStateOf(false) }
+    var priorityExpanded by remember { mutableStateOf(false) }
     var selectedPriority by remember { mutableStateOf("Low") }
 
     // ---------------- IMAGE ----------------
@@ -83,7 +84,7 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
     val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
     var selectedFolderId by remember { mutableStateOf(initialFolderId) }
     var folderMenuExpanded by remember { mutableStateOf(false) }
-    val currentFolderName = folders.find { it.id == selectedFolderId }?.name ?: "No Folder"
+    val selectedFolderName = folders.find { it.id == selectedFolderId }?.name ?: "No Folder (General)"
 
     Scaffold(
         topBar = {
@@ -138,19 +139,19 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
                     readOnly = true,
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
-                        IconButton(onClick = { expanded = !expanded }) {
+                        IconButton(onClick = { priorityExpanded = !priorityExpanded }) {
                             Icon(Icons.Filled.ArrowDropDown, null)
                         }
                     }
                 )
 
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
                     priorities.forEach {
                         DropdownMenuItem(
                             text = { Text(it) },
                             onClick = {
                                 selectedPriority = it
-                                expanded = false
+                                priorityExpanded = false
                             }
                         )
                     }
@@ -166,42 +167,45 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
             }
 
             // -------- FOLDER --------
-            Text("Select Folder", style = MaterialTheme.typography.labelLarge)
-            OutlinedCard(
-                onClick = { folderMenuExpanded = true },
-                modifier = Modifier.fillMaxWidth()
+            ExposedDropdownMenuBox(
+                expanded = folderExpanded,
+                onExpandedChange = { folderExpanded = !folderExpanded }
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Folder, contentDescription = null)
-                    Spacer(Modifier.width(12.dp))
-                    Text(currentFolderName)
-                    Spacer(Modifier.weight(1f))
-                    Icon(Icons.Default.ArrowDropDown, null)
-                }
-            }
-            DropdownMenu(
-                expanded = folderMenuExpanded,
-                onDismissRequest = { folderMenuExpanded = false },
-                modifier = Modifier.fillMaxWidth(0.9f)
-            ) {
-                DropdownMenuItem(
-                    text = { Text("No Folder (General)") },
-                    onClick = {
-                        selectedFolderId = null
-                        folderMenuExpanded = false
-                    }
+                OutlinedTextField(
+                    value = selectedFolderName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Select Folder") },
+                    leadingIcon = { Icon(Icons.Default.Folder, null) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = folderExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier
+                        .menuAnchor() // Important: Anchors the menu to the text field
+                        .fillMaxWidth()
                 )
-                folders.forEach { folder ->
+
+                ExposedDropdownMenu(
+                    expanded = folderExpanded,
+                    onDismissRequest = { folderExpanded = false }
+                ) {
+                    // Option for no folder
                     DropdownMenuItem(
-                        text = { Text(folder.name) },
+                        text = { Text("No Folder (General)") },
                         onClick = {
-                            selectedFolderId = folder.id
-                            folderMenuExpanded = false
+                            selectedFolderId = null
+                            folderExpanded = false
                         }
                     )
+                    // Options for existing folders
+                    folders.forEach { folder ->
+                        DropdownMenuItem(
+                            text = { Text(folder.name) },
+                            onClick = {
+                                selectedFolderId = folder.id
+                                folderExpanded = false
+                            }
+                        )
+                    }
                 }
             }
 
