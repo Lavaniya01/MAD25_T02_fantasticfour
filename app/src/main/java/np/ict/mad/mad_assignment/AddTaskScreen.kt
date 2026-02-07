@@ -4,11 +4,13 @@ import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.content.MediaType.Companion.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,13 +23,19 @@ import kotlinx.coroutines.launch
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
 import java.util.Calendar
+import androidx.compose.foundation.Image
+import coil.compose.rememberAsyncImagePainter
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddTaskScreen(nav: NavController) {
+fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val dao = DatabaseProvider.getDatabase(context).taskDao()
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -70,6 +78,11 @@ fun AddTaskScreen(nav: NavController) {
         calendar.get(Calendar.MONTH),
         calendar.get(Calendar.DAY_OF_MONTH)
     )
+
+    // --------------- FOLDER ---------------
+    val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
+    var selectedFolderId by remember { mutableStateOf(initialFolderId) }
+    var folderMenuExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -151,6 +164,23 @@ fun AddTaskScreen(nav: NavController) {
                 Text(selectedDate)
             }
 
+            // -------- FOLDER --------
+            Box {
+                OutlinedButton(onClick = {folderMenuExpanded = true}, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Folder, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(folders.find { it.id == selectedFolderId }?.name ?: "No Folder (General)")
+                }
+                DropdownMenu(expanded = folderMenuExpanded, onDismissRequest = { folderMenuExpanded = false }) {
+                    DropdownMenuItem(text = { Text("None") }, onClick = { selectedFolderId = null; folderMenuExpanded = false})
+                    folders.forEach { folder ->
+                        DropdownMenuItem(text = { Text(folder.name) }, onClick = { selectedFolderId = folder.id; folderMenuExpanded = false } )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // -------- IMAGE --------
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -164,9 +194,22 @@ fun AddTaskScreen(nav: NavController) {
                 }
 
                 if (imageUri != null) {
-                    Text("Photo Attached", color = MaterialTheme.colorScheme.primary)
+                    Image(
+                        painter = rememberAsyncImagePainter(imageUri),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                Button(onClick = { imagePickerLauncher.launch("image/*")}, modifier = Modifier.padding(vertical = 8.dp)) {
+                    Icon(Icons.Default.AddAPhoto, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Update Photo")
                 }
             }
+
+            Spacer(modifier = Modifier.weight(1f))
 
             // -------- SAVE BUTTON --------
             Button(
@@ -184,7 +227,8 @@ fun AddTaskScreen(nav: NavController) {
                             priority = selectedPriority,
                             date = "Test: due in 30 min",
                             imageUri = imageUri?.toString(),
-                            dueAtMillis = finalDueAtMillis
+                            dueAtMillis = finalDueAtMillis,
+                            folderId = selectedFolderId
                         )
                         //actual code
                        /* val newTask = Task(

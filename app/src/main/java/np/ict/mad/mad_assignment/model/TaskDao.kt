@@ -26,5 +26,11 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE id = :taskId")
     suspend fun getTaskById(taskId: Int): Task?
 
+    @Query("SELECT * FROM folders")
+    fun getAllFoldersFlow(): Flow<List<Folder>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFolder(folder: Folder)
+
 }
 

@@ -17,7 +17,7 @@ import com.google.firebase.auth.FirebaseAuth
 fun ChangePasswordScreen(nav: NavHostController) {
     var newPassword by remember { mutableStateOf("") }
     val context = LocalContext.current
-    val auth = FirebaseAuth.getInstance()
+    val user = FirebaseAuth.getInstance().currentUser
 
     Column(
         modifier = Modifier
@@ -26,7 +26,7 @@ fun ChangePasswordScreen(nav: NavHostController) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Reset Password", style = MaterialTheme.typography.headlineMedium)
+        Text("Update Password", style = MaterialTheme.typography.headlineMedium)
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -42,24 +42,16 @@ fun ChangePasswordScreen(nav: NavHostController) {
 
         Button(
             onClick = {
-                val user = auth.currentUser
-                if (newPassword.isNotEmpty()) {
-                    user?.updatePassword(newPassword)
-                        ?.addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                Toast.makeText(context,
-                                    "Password Updated!",
-                                    Toast.LENGTH_SHORT)
-                                    .show()
-                                nav.popBackStack()
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    "Error: ${task.exception?.message}",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
+                if (newPassword.length < 6) {
+                    Toast.makeText(context, "Password too short", Toast.LENGTH_SHORT).show()
+                } else {
+                    user?.updatePassword(newPassword)?.addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            Toast.makeText(context, "Success!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Error: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                         }
+                    }
                 }
             },
 

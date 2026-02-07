@@ -41,6 +41,8 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ){
+            Text("Preferences", style = MaterialTheme.typography.titleMedium)
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -51,6 +53,8 @@ fun SettingsScreen(
             }
 
             HorizontalDivider()
+
+            Text("Account", style = MaterialTheme.typography.titleMedium)
 
             Button(
                 onClick = { nav.navigate(Routes.ChangePassword) },
