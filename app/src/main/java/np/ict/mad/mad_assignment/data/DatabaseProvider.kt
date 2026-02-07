@@ -12,8 +12,10 @@ object DatabaseProvider {
             val instance = Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
-                "tasks_db"
-            ).build()
+                "smart_tasks_db"
+            )
+                .fallbackToDestructiveMigration()
+                .build()
             INSTANCE = instance
             instance
         }
