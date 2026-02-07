@@ -54,7 +54,7 @@ import com.google.firebase.FirebaseApp
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
-
+import androidx.compose.material.icons.filled.Settings
 
 
 class MainActivity : ComponentActivity() {
@@ -360,30 +360,18 @@ fun HomeScreen(
     isDarkMode: Boolean,
     onToggleTheme: () -> Unit
 ) {
-    // Rest of HomeScreen UI
-
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Button(
-            onClick = onToggleTheme,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-        ) {
-            Text("Toggle Theme")
-        }
-    }
     val context = LocalContext.current
     val dao = DatabaseProvider.getDatabase(context).taskDao()
     val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
     val sortedTasks = remember(tasks) {
-        tasks.sortedWith (
-            compareByDescending<Task> { priorityToInt(it.priority) }.thenBy { it.id }
+        tasks.sortedWith(
+            compareByDescending<Task> { priorityToInt(it.priority) }
+                .thenBy { it.id }
         )
     }
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
@@ -394,6 +382,7 @@ fun HomeScreen(
             }
         }
     ) { padding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -402,27 +391,40 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
+            // Header row with Settings button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "SmartTasks",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = if (sortedTasks.isEmpty())
-                        "No tasks yet"
-                    else
-                        "${sortedTasks.size} task${if (sortedTasks.size == 1) "" else "s"} total",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column {
+                    Text(
+                        text = "SmartTasks",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = if (sortedTasks.isEmpty())
+                            "No tasks yet"
+                        else
+                            "${sortedTasks.size} task${if (sortedTasks.size == 1) "" else "s"} total",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                IconButton(
+                    onClick = { nav.navigate(Routes.Settings) }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Settings"
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             if (sortedTasks.isEmpty()) {
                 Box(
@@ -462,19 +464,9 @@ fun HomeScreen(
                 }
             }
         }
-        Box(modifier = Modifier.fillMaxSize()) {
-            Button(
-                onClick = onToggleTheme,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-            ) {
-                Text("Toggle Theme")
-
-            }
-        }
     }
 }
+
 
 // ---------------------------------------------------
 // TASK CARD
