@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,12 +54,7 @@ import com.google.firebase.FirebaseApp
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Folder
-import coil.compose.AsyncImage
-import kotlinx.coroutines.CoroutineScope
-import np.ict.mad.mad_assignment.model.Folder
-import np.ict.mad.mad_assignment.model.TaskDao
+
 
 
 class MainActivity : ComponentActivity() {
@@ -367,14 +361,23 @@ fun HomeScreen(
     onToggleTheme: () -> Unit
 ) {
     // Rest of HomeScreen UI
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Button(
+            onClick = onToggleTheme,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        ) {
+            Text("Toggle Theme")
+        }
+    }
     val context = LocalContext.current
     val dao = DatabaseProvider.getDatabase(context).taskDao()
     val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
-
-    var showFolderDialog by remember { mutableStateOf(false) }
-    var newFolderName by remember { mutableStateOf("") }
-    val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
 
     val sortedTasks = remember(tasks) {
         tasks.sortedWith (
@@ -382,25 +385,6 @@ fun HomeScreen(
         )
     }
     Scaffold(
-        topBar = {
-            @OptIn(ExperimentalMaterial3Api::class)
-            TopAppBar(
-                title = { Text("SmartTasks") },
-                actions = {
-                    IconButton(onClick = { showFolderDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.CreateNewFolder,
-                            contentDescription = "New Folder"
-                        )
-                    }
-
-                    IconButton( onClick = { nav.navigate(Routes.Settings) }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                }
-            )
-        },
-
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { nav.navigate(Routes.AddTask) },
@@ -410,38 +394,6 @@ fun HomeScreen(
             }
         }
     ) { padding ->
-        if (showFolderDialog) {
-            AlertDialog(
-                onDismissRequest = { showFolderDialog = false },
-                title = { Text("Create New Folder") },
-                text = {
-                    OutlinedTextField(
-                        value = newFolderName,
-                        onValueChange = { newFolderName = it },
-                        label = { Text("Folder Name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            if (newFolderName.isNotBlank()) {
-                                scope.launch(Dispatchers.IO) {
-                                    dao.insertFolder(Folder(name = newFolderName))
-                                }
-                                newFolderName = ""
-                                showFolderDialog = false
-                            }
-                        }
-                    ) { Text("Create") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showFolderDialog = false }) { Text("Cancel") }
-                }
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -498,8 +450,6 @@ fun HomeScreen(
                     items(sortedTasks) { task ->
                         TaskCard(
                             task = task,
-                            dao = dao,
-                            scope = scope,
                             onClick = { nav.navigate("details/${task.id}") },
                             onEdit = { nav.navigate("edit_task/${task.id}") },
                             onDelete = {
@@ -533,12 +483,11 @@ fun HomeScreen(
 @Composable
 fun TaskCard(
     task: Task,
-    dao: TaskDao,
-    scope: CoroutineScope,
     onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    var expanded by remember { mutableStateOf(false) }
 
     val isDone = task.isDone
 
@@ -555,10 +504,6 @@ fun TaskCard(
     val titleColor = if (isDone) Color.Gray else Color.Unspecified
     val titleDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None
     val descriptionColor = if (isDone) Color.LightGray else Color.DarkGray
-
-    var expanded by remember { mutableStateOf(false) }
-    var showMoveDialog by remember { mutableStateOf(false) }
-    val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
 
     Card(
         modifier = Modifier
@@ -612,20 +557,23 @@ fun TaskCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Column (modifier = Modifier.weight(1f)){
-                    Text(text = task.title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
+                Column {
                     if (!task.imageUri.isNullOrEmpty()) {
-                        AsyncImage(
-                            model = task.imageUri,
-                            contentDescription = "Task Image",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp)
-                                .padding(vertical = 8.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Image,
+                                contentDescription = "Photo Attached",
+                                modifier = Modifier.size(16.dp),
+                                tint = Color(0xFF4CAF50)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "Photo Attached",
+                                fontSize = 14.sp,
+                                color = Color(0xFF4CAF50)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
 
                     Row(
@@ -703,15 +651,6 @@ fun TaskCard(
                         }
                     )
 
-                    // Move to Folder logic
-                    DropdownMenuItem(
-                        text = { Text("Move to Folder") },
-                        onClick = {
-                            expanded = false
-                            showMoveDialog = true
-                        }
-                    )
-
                     DropdownMenuItem(
                         text = { Text("Delete", color = Color.Red) },
                         onClick = {
@@ -722,45 +661,6 @@ fun TaskCard(
                 }
             }
         }
-    }
-
-    if (showMoveDialog) {
-        AlertDialog(
-            onDismissRequest = { showMoveDialog = false },
-            title = { Text("Move to Folder") },
-            text = {
-                LazyColumn {
-                    // Option to remove from all folders
-                    item {
-                        ListItem(
-                            headlineContent = { Text("No Folder (General)") },
-                            modifier = Modifier.clickable {
-                                scope.launch(Dispatchers.IO) {
-                                    dao.updateTask(task.copy(folderId = null))
-                                }
-                                showMoveDialog = false
-                            }
-                        )
-                    }
-                    // List of existing folders
-                    items(folders) { folder ->
-                        ListItem(
-                            headlineContent = { Text(folder.name) },
-                            leadingContent = { Icon(Icons.Default.Folder, null) },
-                            modifier = Modifier.clickable {
-                                scope.launch(Dispatchers.IO) {
-                                    dao.updateTask(task.copy(folderId = folder.id))
-                                }
-                                showMoveDialog = false
-                            }
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showMoveDialog = false }) { Text("Cancel") }
-            }
-        )
     }
 }
 
