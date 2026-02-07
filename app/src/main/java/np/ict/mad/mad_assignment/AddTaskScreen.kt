@@ -186,6 +186,15 @@ fun AddTaskScreen(nav: NavController) {
                             imageUri = imageUri?.toString(),
                             dueAtMillis = finalDueAtMillis
                         )
+                        //actual code
+                       /* val newTask = Task(
+                            title = title,
+                            description = description,
+                            priority = selectedPriority,
+                            date = selectedDate,
+                            imageUri = imageUri?.toString(),
+                            dueAtMillis = dueAtMillis
+                        )*/
 
                         scope.launch(Dispatchers.IO) {
                             val dao =
