@@ -8,4 +8,7 @@ object Routes {
     const val Home = "home"
     const val AddTask = "add_task"
     const val Details = "details/{taskId}"
+    const val Settings = "settings"
+    const val Folders = "folders"
+    const val ChangePassword = "change_password"
 }

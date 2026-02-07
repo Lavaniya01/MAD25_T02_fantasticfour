@@ -126,6 +126,18 @@ fun AppNavigation(
             val id = backStackEntry.arguments?.getString("taskId")?.toInt() ?: 0
             TaskDetailsScreen(nav, id)
         }
+
+        composable(Routes.Settings) {
+            SettingsScreen(nav, isDarkMode, onToggleTheme)
+        }
+
+        composable(Routes.ChangePassword) {
+            ChangePasswordScreen(nav)
+        }
+
+        composable(Routes.Folders) {
+            FoldersScreen(nav)
+        }
     }
 }
 @Composable
