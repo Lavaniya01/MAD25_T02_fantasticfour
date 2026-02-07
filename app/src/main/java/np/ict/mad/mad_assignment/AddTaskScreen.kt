@@ -83,6 +83,7 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
     val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
     var selectedFolderId by remember { mutableStateOf(initialFolderId) }
     var folderMenuExpanded by remember { mutableStateOf(false) }
+    val currentFolderName = folders.find { it.id == selectedFolderId }?.name ?: "No Folder"
 
     Scaffold(
         topBar = {
@@ -165,19 +166,45 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
             }
 
             // -------- FOLDER --------
-            Box {
-                OutlinedButton(onClick = {folderMenuExpanded = true}, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Folder, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(folders.find { it.id == selectedFolderId }?.name ?: "No Folder (General)")
-                }
-                DropdownMenu(expanded = folderMenuExpanded, onDismissRequest = { folderMenuExpanded = false }) {
-                    DropdownMenuItem(text = { Text("None") }, onClick = { selectedFolderId = null; folderMenuExpanded = false})
-                    folders.forEach { folder ->
-                        DropdownMenuItem(text = { Text(folder.name) }, onClick = { selectedFolderId = folder.id; folderMenuExpanded = false } )
-                    }
+            Text("Select Folder", style = MaterialTheme.typography.labelLarge)
+            OutlinedCard(
+                onClick = { folderMenuExpanded = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Folder, contentDescription = null)
+                    Spacer(Modifier.width(12.dp))
+                    Text(currentFolderName)
+                    Spacer(Modifier.weight(1f))
+                    Icon(Icons.Default.ArrowDropDown, null)
                 }
             }
+            DropdownMenu(
+                expanded = folderMenuExpanded,
+                onDismissRequest = { folderMenuExpanded = false },
+                modifier = Modifier.fillMaxWidth(0.9f)
+            ) {
+                DropdownMenuItem(
+                    text = { Text("No Folder (General)") },
+                    onClick = {
+                        selectedFolderId = null
+                        folderMenuExpanded = false
+                    }
+                )
+                folders.forEach { folder ->
+                    DropdownMenuItem(
+                        text = { Text(folder.name) },
+                        onClick = {
+                            selectedFolderId = folder.id
+                            folderMenuExpanded = false
+                        }
+                    )
+                }
+            }
+
 
             Spacer(modifier = Modifier.height(16.dp))
 

@@ -54,7 +54,13 @@ import com.google.firebase.FirebaseApp
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
-
+import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Settings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
+import np.ict.mad.mad_assignment.model.Folder
+import np.ict.mad.mad_assignment.model.TaskDao
 
 
 class MainActivity : ComponentActivity() {
@@ -113,7 +119,11 @@ fun AppNavigation(
                 onToggleTheme = onToggleTheme
             )
         }
-        composable(Routes.AddTask) {AddTaskScreen(nav) }
+
+        composable("${Routes.AddTask}?folderId={folderId}") { backStackEntry ->
+            val folderId = backStackEntry.arguments?.getString("folderId")?.toIntOrNull()
+            AddTaskScreen(nav, folderId)
+        }
 
         composable("edit_task/{taskId}"){ backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull()
@@ -137,6 +147,11 @@ fun AppNavigation(
 
         composable(Routes.Folders) {
             FoldersScreen(nav)
+        }
+
+        composable("folder_detail/{folderId}") { backStackEntry ->
+            val folderId = backStackEntry.arguments?.getString("folderId")?.toInt() ?: 0
+            FolderDetailScreen(nav, folderId)
         }
     }
 }
@@ -360,24 +375,13 @@ fun HomeScreen(
     isDarkMode: Boolean,
     onToggleTheme: () -> Unit
 ) {
-    // Rest of HomeScreen UI
-
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Button(
-            onClick = onToggleTheme,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-        ) {
-            Text("Toggle Theme")
-        }
-    }
     val context = LocalContext.current
     val dao = DatabaseProvider.getDatabase(context).taskDao()
     val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
+    var showFolderDialog by remember { mutableStateOf(false) }
+    var newFolderName by remember { mutableStateOf("") }
+    val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
 
     val sortedTasks = remember(tasks) {
         tasks.sortedWith (
@@ -385,6 +389,35 @@ fun HomeScreen(
         )
     }
     Scaffold(
+        topBar = {
+            @OptIn(ExperimentalMaterial3Api::class)
+            TopAppBar(
+                title = { Text("SmartTasks") },
+                actions = {
+                    // PC-Style "New Folder" Button
+                    IconButton(onClick = { showFolderDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.CreateNewFolder,
+                            contentDescription = "New Folder"
+                        )
+                    }
+                    // Navigation to Folders Screen
+                    IconButton(onClick = { nav.navigate(Routes.Folders) }) {
+                        Icon(
+                            imageVector = Icons.Default.Folder,
+                            contentDescription = "View Folders"
+                        )
+                    }
+                    // Navigation to Settings
+                    IconButton(onClick = { nav.navigate(Routes.Settings) }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings"
+                        )
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { nav.navigate(Routes.AddTask) },
@@ -408,17 +441,47 @@ fun HomeScreen(
                     .padding(bottom = 8.dp)
             ) {
                 Text(
-                    text = "SmartTasks",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
                     text = if (sortedTasks.isEmpty())
                         "No tasks yet"
                     else
                         "${sortedTasks.size} task${if (sortedTasks.size == 1) "" else "s"} total",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (showFolderDialog) {
+                AlertDialog(
+                    onDismissRequest = { showFolderDialog = false },
+                    title = { Text("New Folder") },
+                    text = {
+                        OutlinedTextField(
+                            value = newFolderName,
+                            onValueChange = { newFolderName = it },
+                            label = { Text("Folder Name") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                if (newFolderName.isNotBlank()) {
+                                    scope.launch(Dispatchers.IO) {
+                                        // Same functionality as PC File Explorer / FoldersScreen
+                                        dao.insertFolder(Folder(name = newFolderName))
+                                    }
+                                    newFolderName = ""
+                                    showFolderDialog = false
+                                }
+                            }
+                        ) { Text("Create") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showFolderDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
                 )
             }
 
@@ -450,6 +513,8 @@ fun HomeScreen(
                     items(sortedTasks) { task ->
                         TaskCard(
                             task = task,
+                            dao = dao,
+                            scope = scope,
                             onClick = { nav.navigate("details/${task.id}") },
                             onEdit = { nav.navigate("edit_task/${task.id}") },
                             onDelete = {
@@ -462,17 +527,6 @@ fun HomeScreen(
                 }
             }
         }
-        Box(modifier = Modifier.fillMaxSize()) {
-            Button(
-                onClick = onToggleTheme,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-            ) {
-                Text("Toggle Theme")
-
-            }
-        }
     }
 }
 
@@ -483,6 +537,8 @@ fun HomeScreen(
 @Composable
 fun TaskCard(
     task: Task,
+    dao: TaskDao,
+    scope: CoroutineScope,
     onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -504,6 +560,12 @@ fun TaskCard(
     val titleColor = if (isDone) Color.Gray else Color.Unspecified
     val titleDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None
     val descriptionColor = if (isDone) Color.LightGray else Color.DarkGray
+
+    var showMoveDialog by remember { mutableStateOf(false) }
+
+    // 1. Collect all folders to find the name of the folder this task belongs to
+    val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
+    val parentFolder = folders.find { it.id == task.folderId }
 
     Card(
         modifier = Modifier
@@ -543,6 +605,33 @@ fun TaskCard(
                     color = titleColor,
                     textDecoration = titleDecoration
                 )
+
+                //Folder
+                if (parentFolder != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = RoundedCornerShape(4.dp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Folder,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = parentFolder.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
 
                 // Description
                 if (task.description != null && task.description.isNotEmpty()) {

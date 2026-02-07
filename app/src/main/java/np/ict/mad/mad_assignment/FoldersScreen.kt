@@ -95,33 +95,26 @@ fun FoldersScreen(nav: NavHostController){
         }
 
         // Folder List Display
-        if (folders.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
-                Text("No folders created yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-            ) {
-                items(folders) { folder ->
-                    ListItem(
-                        headlineContent = { Text(folderName) },
-                        leadingContent = { Icon(Icons.Default.Folder, contentDescription = null)},
-                        trailingContent = {
-                            IconButton(onClick = { nav.navigate("add_task?folderId=${folder.id}")}) {
-                                Icon(Icons.Default.Add, contentDescription = "Add Task")
-                            }
-                        },
-                        modifier = Modifier.clickable{
-                            nav.navigate("folder_detail/${folder.id}")
+        LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
+            items(folders) { folder ->
+                ListItem(
+                    // Displaying the folder name clearly
+                    headlineContent = { Text(folder.name) },
+                    leadingContent = { Icon(Icons.Default.Folder, null) },
+                    trailingContent = {
+                        // Shortcut to add task directly to this specific folder
+                        IconButton(onClick = { nav.navigate("${Routes.AddTask}?folderId=${folder.id}") }) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Task")
                         }
-                    )
-
-                    HorizontalDivider()
-                }
+                    },
+                    modifier = Modifier.clickable {
+                        // Logic to open the folder details
+                        nav.navigate("folder_detail/${folder.id}")
+                    }
+                )
+                HorizontalDivider()
             }
+
         }
     }
 }
