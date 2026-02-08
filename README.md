@@ -61,4 +61,13 @@ Ethan: Setting Screen, Folders & Change Password.
 
 Hnin Thant: Task Categories, Search bar
 
-Marcus : Ideation and implementation on UI/UX based on other industry-level task apps + Working on improving the firebase login further.
+Marcus : Implementation of added items , Improving UX/UI , multi-user support 
+
+Stage 2 Features :
+- Improved UI for the Application (Visibility in Dark Mode , HomeScreen , Account Management)
+- Working Notifications
+- Working settings & Account management
+- Multi-User Support
+- Folders
+
+
