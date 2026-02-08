@@ -61,13 +61,13 @@ Ethan: Setting Screen, Folders & Change Password.
 
 Hnin Thant: Task Categories, Search bar
 
-Marcus : Implementation of added items , Improving UX/UI , multi-user support 
+Marcus : Implementation of added items , Improving UX/UI , multi-user support for multiple devices
 
 Stage 2 Features :
 - Improved UI for the Application (Visibility in Dark Mode , HomeScreen , Account Management)
 - Working Notifications
 - Working settings & Account management
-- Multi-User Support
+- Multi-User Support (Multiple devices using Firestore & Firebase)
 - Folders
 
 
