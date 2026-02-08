@@ -28,6 +28,7 @@ import coil.compose.rememberAsyncImagePainter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.material.icons.filled.Category
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +46,10 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
     var folderExpanded by remember { mutableStateOf(false) }
     var priorityExpanded by remember { mutableStateOf(false) }
     var selectedPriority by remember { mutableStateOf("Low") }
+
+    // ---------------- CATEGORY ----------------
+    var selectedCategory by remember { mutableStateOf(PREDEFINED_CATEGORIES.first()) }
+    var categoryExpanded by remember { mutableStateOf(false) }
 
     // ---------------- IMAGE ----------------
     var imageUri by remember { mutableStateOf<Uri?>(null) }
@@ -158,6 +163,38 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
                 }
             }
 
+            // -------- CATEGORY --------
+            Column {
+                Text("Category", style = MaterialTheme.typography.bodyMedium)
+
+                OutlinedTextField(
+                    value = selectedCategory,
+                    onValueChange = {},
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { categoryExpanded = !categoryExpanded }) {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        }
+                    }
+                )
+
+                DropdownMenu(
+                    expanded = categoryExpanded,
+                    onDismissRequest = { categoryExpanded = false }
+                ) {
+                    PREDEFINED_CATEGORIES.forEach { cat ->
+                        DropdownMenuItem(
+                            text = { Text(cat) },
+                            onClick = {
+                                selectedCategory = cat
+                                categoryExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
             // -------- DATE PICKER --------
             Button(
                 onClick = { datePicker.show() },
@@ -256,6 +293,7 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
                             title = title,
                             description = description,
                             priority = selectedPriority,
+                            category = selectedCategory,
                             date = "Test: due in 30 min",
                             imageUri = imageUri?.toString(),
                             dueAtMillis = finalDueAtMillis,
@@ -266,6 +304,7 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
                             title = title,
                             description = description,
                             priority = selectedPriority,
+                            category = selectedCategory,
                             date = selectedDate,
                             imageUri = imageUri?.toString(),
                             dueAtMillis = dueAtMillis

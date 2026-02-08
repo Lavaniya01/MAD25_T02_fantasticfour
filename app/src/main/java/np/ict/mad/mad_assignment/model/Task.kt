@@ -15,8 +15,8 @@ data class Task(
     val isDone: Boolean = false,
     // store as epoch millis (Long) to avoid timezone parsing issues
     val dueAtMillis: Long = 0L,
-    val folderId: Int? = null
-
+    val folderId: Int? = null,
+    val category: String? = null
 )
 
 

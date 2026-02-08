@@ -52,6 +52,7 @@ import np.ict.mad.mad_assignment.model.Task
 import java.util.Calendar
 import java.util.Locale
 import java.text.SimpleDateFormat
+import androidx.compose.material.icons.filled.Category
 
 // ---------------------------------------------------
 // EDIT TASK SCREEN
@@ -74,6 +75,10 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
     val priorities = listOf("Low", "Medium", "High")
     var expanded by remember { mutableStateOf(false) }
     var selectedPriority by remember { mutableStateOf("Low") }
+
+    // Category State
+    var selectedCategory by remember { mutableStateOf(PREDEFINED_CATEGORIES.first()) }
+    var categoryExpanded by remember { mutableStateOf(false) }
 
     // Date Picker
     val initialCalendar = Calendar.getInstance()
@@ -112,6 +117,7 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
             title = it.title
             description = it.description ?: ""
             selectedPriority = it.priority ?: "Low"
+            selectedCategory = it.category ?: PREDEFINED_CATEGORIES.first()
             selectedDate = it.date ?: "Select date"
             imageUri = it.imageUri?.let { s -> Uri.parse(s) }
 
@@ -139,7 +145,7 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Edit Task: ${task?.title ?: ""}") },
+                title = { Text(if (task == null) "Loading..." else "Edit Task") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -210,6 +216,38 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                 }
             }
 
+            // Category Dropdown
+            Column {
+                Text("Category", style = MaterialTheme.typography.bodyMedium)
+
+                OutlinedTextField(
+                    value = selectedCategory,
+                    onValueChange = {},
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { categoryExpanded = !categoryExpanded }) {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                        }
+                    }
+                )
+
+                DropdownMenu(
+                    expanded = categoryExpanded,
+                    onDismissRequest = { categoryExpanded = false }
+                ) {
+                    PREDEFINED_CATEGORIES.forEach { cat ->
+                        DropdownMenuItem(
+                            text = { Text(cat) },
+                            onClick = {
+                                selectedCategory = cat
+                                categoryExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
             // Date Picker
             Button(
                 onClick = {
@@ -264,32 +302,35 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
             // Update Button
             Button(
                 onClick = {
-                    if (title.isNotBlank() && task != null) {
-                        val updatedTask = task!!.copy(
-                            title = title,
-                            description = description,
-                            priority = selectedPriority,
-                            date = selectedDate,
-                            imageUri = imageUri?.toString(),
-                            dueAtMillis = dueAtMillis
+                    val currentTask = task ?: return@Button
+
+                    if (title.isBlank()) return@Button
+
+                    val updatedTask = currentTask.copy(
+                        title = title,
+                        description = description,
+                        priority = selectedPriority,
+                        category = selectedCategory,
+                        date = selectedDate,
+                        imageUri = imageUri?.toString(),
+                        dueAtMillis = dueAtMillis
+                    )
+
+                    scope.launch(Dispatchers.IO) {
+                        dao.updateTask(updatedTask)
+
+                        // 🔔 Reschedule reminder after update
+                        ReminderScheduler.scheduleDueReminder(
+                            context = context,
+                            taskId = updatedTask.id,
+                            title = updatedTask.title,
+                            dueAtMillis = updatedTask.dueAtMillis
                         )
-
-                        scope.launch(Dispatchers.IO) {
-                            dao.updateTask(updatedTask)
-
-                            // 🔔 Reschedule reminder after update
-                            ReminderScheduler.scheduleDueReminder(
-                                context = context,
-                                taskId = updatedTask.id,
-                                title = updatedTask.title,
-                                dueAtMillis = updatedTask.dueAtMillis
-                            )
-                        }
-
-                        navController.popBackStack()
                     }
+
+                    navController.popBackStack()
                 },
-                modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(Color(0xFF2196F3))
             ) {
                 Text(

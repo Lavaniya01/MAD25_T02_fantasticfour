@@ -70,6 +70,13 @@ import androidx.core.content.edit
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 
 
 class MainActivity : ComponentActivity() {
@@ -110,6 +117,18 @@ fun priorityToInt(priority: String?): Int{
         else -> 0
     }
 }
+
+val PREDEFINED_CATEGORIES = listOf(
+    "School",
+    "Work",
+    "Personal",
+    "Health",
+    "Finance",
+    "Others"
+)
+private const val PREFS_NAME = "category_prefs"
+private const val KEY_PREFIX = "cat_expanded_"
+
 @Composable
 fun AppNavigation(
     isDarkMode : Boolean ,
@@ -414,6 +433,33 @@ fun HomeScreen(
             compareByDescending<Task> { priorityToInt(it.priority) }.thenBy { it.id }
         )
     }
+
+    // Group tasks into predefined categories (anything unknown -> Others)
+    val tasksByCategory = remember(sortedTasks) {
+        val map = PREDEFINED_CATEGORIES.associateWith { mutableListOf<Task>() }.toMutableMap()
+
+        sortedTasks.forEach { t ->
+            val raw = t.category?.trim()
+            val key = if (raw != null && raw in PREDEFINED_CATEGORIES) raw else "Others"
+            map.getValue(key).add(t)
+        }
+        map
+    }
+
+    val prefs = remember {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    // Expanded state per category (default = true)
+    val expandedMap = remember {
+        mutableStateMapOf<String, Boolean>().apply {
+            PREDEFINED_CATEGORIES.forEach { cat ->
+                val saved = prefs.getBoolean(KEY_PREFIX + cat, true)
+                this[cat] = saved
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             @OptIn(ExperimentalMaterial3Api::class)
@@ -544,25 +590,102 @@ fun HomeScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
-                    items(sortedTasks) { task ->
-                        TaskCard(
-                            task = task,
-                            dao = dao,
-                            scope = scope,
-                            onClick = { nav.navigate("details/${task.id}") },
-                            onEdit = { nav.navigate("edit_task/${task.id}") },
-                            onDelete = {
-                                scope.launch(Dispatchers.IO) {
-                                    dao.deleteTask(task)
+                    PREDEFINED_CATEGORIES.forEach { category ->
+                        val catTasks = tasksByCategory[category].orEmpty()
+                        if (catTasks.isNotEmpty()) {
+                            item {
+                                CategorySectionHeader(
+                                    title = category,
+                                    count = catTasks.size,
+                                    expanded = expandedMap[category] == true,
+                                    onToggle = {
+                                        val newValue = !(expandedMap[category] == true)
+                                        expandedMap[category] = newValue
+                                        prefs.edit().putBoolean(KEY_PREFIX + category, newValue).apply()
+                                    }
+                                )
+                            }
+
+                            item {
+                                AnimatedVisibility(
+                                    visible = expandedMap[category] == true,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        catTasks.forEach { task ->
+                                            TaskCard(
+                                                task = task,
+                                                dao = dao,
+                                                scope = scope,
+                                                onClick = { nav.navigate("details/${task.id}") },
+                                                onEdit = { nav.navigate("edit_task/${task.id}") },
+                                                onDelete = {
+                                                    scope.launch(Dispatchers.IO) {
+                                                        dao.deleteTask(task)
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                        )
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun CategorySectionHeader(
+    title: String,
+    count: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() },
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Folder,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(Modifier.width(10.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "$count task${if (count == 1) "" else "s"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = if (expanded) "Collapse" else "Expand"
+            )
         }
     }
 }
