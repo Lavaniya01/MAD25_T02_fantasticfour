@@ -256,13 +256,16 @@ fun TaskDetailsContent(task: Task) {
                         imageVector = Icons.Default.CalendarMonth,
                         contentDescription = "Due Date",
                         modifier = Modifier.size(18.dp),
-                        tint = Color.Gray
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+
+
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Due Date: ${task.date}",
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+
                     )
                 }
             }

@@ -662,6 +662,7 @@ fun HomeScreen(
                                                 .putBoolean(KEY_PREFIX + category, newValue)
                                                 .apply()
                                         }
+
                                     }
                                 )
                             }
@@ -716,8 +717,7 @@ fun HomeScreen(
                                             .apply()
                                     }
                                 },
-                                // Different "folder colour"
-                                containerColor = Color(0xFFE8EAF6),
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 iconTint = Color(0xFF3949AB)
                             )
                         }
@@ -760,7 +760,7 @@ fun CategorySectionHeader(
     count: Int,
     expanded: Boolean,
     onToggle: () -> Unit,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     iconTint: Color = MaterialTheme.colorScheme.primary
 ) {
     Card(
@@ -833,9 +833,21 @@ fun TaskCard(
     // If done, use grey to visually separate from active tasks
     val priorityColor = if (isDone) Color(0xFF9E9E9E) else priorityColorBase
 
-    val titleColor = if (isDone) Color.Gray else Color.Unspecified
-    val titleDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None
-    val descriptionColor = if (isDone) Color.LightGray else Color.DarkGray
+    val titleColor =
+        if (isDone)
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+        else
+            MaterialTheme.colorScheme.onSurface
+
+    val titleDecoration =
+        if (isDone) TextDecoration.LineThrough else TextDecoration.None
+
+    val descriptionColor =
+        if (isDone)
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        else
+            MaterialTheme.colorScheme.onSurfaceVariant
+
 
     var showMoveDialog by remember { mutableStateOf(false) }
 
@@ -992,13 +1004,16 @@ fun TaskCard(
                                     imageVector = Icons.Default.CalendarMonth,
                                     contentDescription = "Due Date",
                                     modifier = Modifier.size(16.dp),
-                                    tint = Color.Gray
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+
+
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = "Due Date: $formattedDate",
                                     fontSize = 13.sp,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+
                                 )
                             }
                         }

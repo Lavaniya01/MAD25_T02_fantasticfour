@@ -182,7 +182,8 @@ fun FolderCard(
                 Text(
                     text = "$count tasks",
                     fontSize = 14.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+
                 )
             }
 
