@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.filled.Category
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +38,9 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val dao = DatabaseProvider.getDatabase(context).taskDao()
+
+
+    // ---------------- TITLE ----------------
 
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -288,7 +292,8 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
                         // Reminder time already passed → notification fires in ~10s
                         val finalDueAtMillis =
                             System.currentTimeMillis() + 30 * 60_000L
-
+                        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                        //actual code
                         val newTask = Task(
                             title = title,
                             description = description,
@@ -297,7 +302,8 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
                             date = "Test: due in 30 min",
                             imageUri = imageUri?.toString(),
                             dueAtMillis = finalDueAtMillis,
-                            folderId = selectedFolderId
+                            folderId = selectedFolderId,
+                            userId = uid
                         )
                         //actual code
                        /* val newTask = Task(

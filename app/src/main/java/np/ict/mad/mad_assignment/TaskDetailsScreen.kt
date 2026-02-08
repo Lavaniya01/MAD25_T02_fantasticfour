@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
 import androidx.core.net.toUri
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,13 +63,13 @@ fun TaskDetailsScreen(nav: NavController, taskId: Int) {
 
     val context = LocalContext.current
     val dao = DatabaseProvider.getDatabase(context).taskDao()
-
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
     var task by remember { mutableStateOf<Task?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(taskId) {
         scope.launch(Dispatchers.IO) {
-            task = dao.getTaskById(taskId)
+            task = dao.getTaskById(taskId,uid)
         }
     }
 

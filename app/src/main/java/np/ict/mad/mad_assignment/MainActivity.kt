@@ -423,8 +423,9 @@ fun HomeScreen(
     onToggleTheme: () -> Unit
 ) {
     val context = LocalContext.current
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
     val dao = DatabaseProvider.getDatabase(context).taskDao()
-    val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
+    val tasks by dao.getAllTasksFlow(uid).collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var showCreateDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }

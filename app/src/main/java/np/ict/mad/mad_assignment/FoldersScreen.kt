@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material3.TextButton
 import androidx.wear.compose.material3.TextButtonDefaults
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import np.ict.mad.mad_assignment.model.TaskDao
@@ -46,9 +47,10 @@ import np.ict.mad.mad_assignment.model.TaskDao
 fun FoldersScreen(nav: NavHostController){
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val dao = DatabaseProvider.getDatabase(context).taskDao()
     val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
-    val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
+    val tasks by dao.getAllTasksFlow(uid).collectAsState(initial = emptyList())
     val folderCounts by remember { derivedStateOf { tasks.groupBy { it.folderId }.mapValues { it.value.size } } }
 
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -256,6 +258,7 @@ fun FolderCard(
     }
 
     if (showDeleteDialog) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Delete Folder") },
@@ -264,7 +267,7 @@ fun FolderCard(
                 TextButton(
                     onClick = {
                         scope.launch(Dispatchers.IO) {
-                            dao.setTasksFolderToNull(folder.id)
+                            dao.setTasksFolderToNull(folder.id,uid)
                             dao.deleteFolder(folder)
                         }
                         showDeleteDialog = false

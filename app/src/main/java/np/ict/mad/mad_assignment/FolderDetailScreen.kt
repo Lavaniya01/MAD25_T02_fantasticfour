@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -20,9 +21,11 @@ import np.ict.mad.mad_assignment.data.DatabaseProvider
 fun FolderDetailScreen(nav: NavController, folderId: Int) {
     val context = LocalContext.current
     val dao = DatabaseProvider.getDatabase(context).taskDao()
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
 
     // Fetch only tasks belonging to this folder
-    val tasks by dao.getTasksByFolder(folderId).collectAsState(initial = emptyList())
+    val tasks by dao.getTasksByFolder(folderId, userId = uid).collectAsState(initial = emptyList())
     val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
     val currentFolder = folders.find { it.id == folderId }
 

@@ -53,6 +53,7 @@ import java.util.Calendar
 import java.util.Locale
 import java.text.SimpleDateFormat
 import androidx.compose.material.icons.filled.Category
+import com.google.firebase.auth.FirebaseAuth
 
 // ---------------------------------------------------
 // EDIT TASK SCREEN
@@ -110,7 +111,8 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
 
     // Load task once & populate UI state
     LaunchedEffect(taskId) {
-        val t = withContext(Dispatchers.IO) { dao.getTaskById(taskId) }
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+        val t = withContext(Dispatchers.IO) { dao.getTaskById(taskId,uid) }
         task = t
 
         t?.let {
