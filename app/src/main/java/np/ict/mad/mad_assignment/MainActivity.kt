@@ -77,6 +77,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
 
 
 class MainActivity : ComponentActivity() {
@@ -425,6 +427,7 @@ fun HomeScreen(
     val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var showCreateDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     var folderNameInput by remember { mutableStateOf("") }
     val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
 
@@ -434,11 +437,24 @@ fun HomeScreen(
         )
     }
 
+    // Search-filtered tasks
+    val filteredTasks = remember(sortedTasks, searchQuery) {
+        val q = searchQuery.trim()
+        if (q.isBlank()) {
+            sortedTasks
+        } else {
+            sortedTasks.filter { task ->
+                task.title.contains(q, ignoreCase = true) ||
+                        (task.description?.contains(q, ignoreCase = true) == true)
+            }
+        }
+    }
+
     // Group tasks into predefined categories (anything unknown -> Others)
-    val tasksByCategory = remember(sortedTasks) {
+    val tasksByCategory = remember(filteredTasks) {
         val map = PREDEFINED_CATEGORIES.associateWith { mutableListOf<Task>() }.toMutableMap()
 
-        sortedTasks.forEach { t ->
+        filteredTasks.forEach { t ->
             val raw = t.category?.trim()
             val key = if (raw != null && raw in PREDEFINED_CATEGORIES) raw else "Others"
             map.getValue(key).add(t)
@@ -517,6 +533,24 @@ fun HomeScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
+            // Search Bar UI
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("Search tasks") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                trailingIcon = {
+                    if (searchQuery.isNotBlank()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear")
+                        }
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Column(
                 modifier = Modifier
@@ -524,10 +558,13 @@ fun HomeScreen(
                     .padding(bottom = 8.dp)
             ) {
                 Text(
-                    text = if (sortedTasks.isEmpty())
-                        "No tasks yet"
-                    else
-                        "${sortedTasks.size} task${if (sortedTasks.size == 1) "" else "s"} total",
+                    text = if (searchQuery.isBlank()) {
+                        if (sortedTasks.isEmpty()) "No tasks yet"
+                        else "${sortedTasks.size} task${if (sortedTasks.size == 1) "" else "s"} total"
+                    } else {
+                        if (filteredTasks.isEmpty()) "No results for \"${searchQuery.trim()}\""
+                        else "${filteredTasks.size} result${if (filteredTasks.size == 1) "" else "s"} found"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -553,7 +590,11 @@ fun HomeScreen(
                                     scope.launch(Dispatchers.IO) {
                                         dao.insertFolder(Folder(name = folderNameInput))
                                         withContext(Dispatchers.Main) {
-                                            Toast.makeText(context, "Folder created: $folderNameInput", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(
+                                                context,
+                                                "Folder created: $folderNameInput",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
                                     }
                                     showCreateDialog = false
@@ -567,10 +608,11 @@ fun HomeScreen(
                 )
             }
 
-
             Spacer(modifier = Modifier.height(4.dp))
 
-            if (sortedTasks.isEmpty()) {
+            val isSearching = searchQuery.isNotBlank()
+
+            if (filteredTasks.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -595,23 +637,37 @@ fun HomeScreen(
                 ) {
                     PREDEFINED_CATEGORIES.forEach { category ->
                         val catTasks = tasksByCategory[category].orEmpty()
+
                         if (catTasks.isNotEmpty()) {
+
+                            // Header
                             item {
+                                val catExpanded =
+                                    if (isSearching) true else (expandedMap[category] == true)
+
                                 CategorySectionHeader(
                                     title = category,
                                     count = catTasks.size,
-                                    expanded = expandedMap[category] == true,
+                                    expanded = catExpanded,
                                     onToggle = {
-                                        val newValue = !(expandedMap[category] == true)
-                                        expandedMap[category] = newValue
-                                        prefs.edit().putBoolean(KEY_PREFIX + category, newValue).apply()
+                                        if (!isSearching) {
+                                            val newValue = !(expandedMap[category] == true)
+                                            expandedMap[category] = newValue
+                                            prefs.edit()
+                                                .putBoolean(KEY_PREFIX + category, newValue)
+                                                .apply()
+                                        }
                                     }
                                 )
                             }
 
+                            // Tasks
                             item {
+                                val catExpanded =
+                                    if (isSearching) true else (expandedMap[category] == true)
+
                                 AnimatedVisibility(
-                                    visible = expandedMap[category] == true,
+                                    visible = catExpanded,
                                     enter = expandVertically() + fadeIn(),
                                     exit = shrinkVertically() + fadeOut()
                                 ) {
