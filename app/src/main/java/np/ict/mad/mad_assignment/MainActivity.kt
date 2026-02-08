@@ -55,14 +55,21 @@ import android.Manifest
 import android.content.Context
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.KeyboardType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import np.ict.mad.mad_assignment.model.Folder
 import np.ict.mad.mad_assignment.model.TaskDao
 import androidx.core.content.edit
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 class MainActivity : ComponentActivity() {
@@ -269,7 +276,9 @@ fun LoginScreen(nav: NavHostController) {
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
-            singleLine = true
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -277,7 +286,8 @@ fun LoginScreen(nav: NavHostController) {
         PasswordField(
             value = password,
             onValueChange = { password = it },
-            label = "Password"
+            label = "Password",
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -327,7 +337,10 @@ fun SignupScreen(nav: NavHostController) {
         TextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email") }
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -335,7 +348,8 @@ fun SignupScreen(nav: NavHostController) {
         PasswordField(
             value = password,
             onValueChange = { password = it },
-            label = "Password"
+            label = "Password",
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -391,8 +405,8 @@ fun HomeScreen(
     val dao = DatabaseProvider.getDatabase(context).taskDao()
     val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
-    var showFolderDialog by remember { mutableStateOf(false) }
-    var newFolderName by remember { mutableStateOf("") }
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var folderNameInput by remember { mutableStateOf("") }
     val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
 
     val sortedTasks = remember(tasks) {
@@ -404,15 +418,25 @@ fun HomeScreen(
         topBar = {
             @OptIn(ExperimentalMaterial3Api::class)
             TopAppBar(
-                title = { Text("SmartTasks") },
+                title = { Text(
+                    "SmartTasks",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 40.sp,
+                    fontFamily = FontFamily.Cursive
+                )
+                        },
                 actions = {
-                    // PC-Style "New Folder" Button
-                    IconButton(onClick = { showFolderDialog = true }) {
+                    // New Folder
+                    IconButton(onClick = {
+                        folderNameInput = ""
+                        showCreateDialog = true
+                    }) {
                         Icon(
                             imageVector = Icons.Default.CreateNewFolder,
                             contentDescription = "New Folder"
                         )
                     }
+
                     // Navigation to Folders Screen
                     IconButton(onClick = { nav.navigate(Routes.Folders) }) {
                         Icon(
@@ -420,6 +444,7 @@ fun HomeScreen(
                             contentDescription = "View Folders"
                         )
                     }
+
                     // Navigation to Settings
                     IconButton(onClick = { nav.navigate(Routes.Settings) }) {
                         Icon(
@@ -462,14 +487,14 @@ fun HomeScreen(
                 )
             }
 
-            if (showFolderDialog) {
+            if (showCreateDialog) {
                 AlertDialog(
-                    onDismissRequest = { showFolderDialog = false },
+                    onDismissRequest = { showCreateDialog = false },
                     title = { Text("New Folder") },
                     text = {
                         OutlinedTextField(
-                            value = newFolderName,
-                            onValueChange = { newFolderName = it },
+                            value = folderNameInput,
+                            onValueChange = { folderNameInput = it },
                             label = { Text("Folder Name") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
@@ -478,24 +503,24 @@ fun HomeScreen(
                     confirmButton = {
                         Button(
                             onClick = {
-                                if (newFolderName.isNotBlank()) {
+                                if (folderNameInput.isNotBlank()) {
                                     scope.launch(Dispatchers.IO) {
-                                        // Same functionality as PC File Explorer / FoldersScreen
-                                        dao.insertFolder(Folder(name = newFolderName))
+                                        dao.insertFolder(Folder(name = folderNameInput))
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "Folder created: $folderNameInput", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
-                                    newFolderName = ""
-                                    showFolderDialog = false
+                                    showCreateDialog = false
                                 }
                             }
                         ) { Text("Create") }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showFolderDialog = false }) {
-                            Text("Cancel")
-                        }
+                        TextButton(onClick = { showCreateDialog = false }) { Text("Cancel") }
                     }
                 )
             }
+
 
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -715,7 +740,14 @@ fun TaskCard(
                         }
 
                         // Due date with icon (unchanged)
-                        task.date?.let {
+                        if (task.dueAtMillis > 0) {
+                            val dateFormat = remember {
+                                SimpleDateFormat(
+                                    "d/M/yyyy",
+                                    Locale.getDefault()
+                                )
+                            }
+                            val formattedDate = dateFormat.format(Date(task.dueAtMillis))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     imageVector = Icons.Default.CalendarMonth,
@@ -725,7 +757,7 @@ fun TaskCard(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Due Date: $it",
+                                    text = "Due Date: $formattedDate",
                                     fontSize = 13.sp,
                                     color = Color.Gray
                                 )
@@ -753,10 +785,63 @@ fun TaskCard(
                     )
 
                     DropdownMenuItem(
+                        text = { Text("Move to...") },
+                        onClick = {
+                            expanded = false
+                            showMoveDialog = true
+                        }
+                    )
+
+                    DropdownMenuItem(
                         text = { Text("Delete", color = Color.Red) },
                         onClick = {
                             expanded = false
                             onDelete()
+                        }
+                    )
+                }
+
+                if (showMoveDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showMoveDialog = false },
+                        title = { Text("Move to Folder") },
+                        text = {
+                            LazyColumn {
+                                item {
+                                    Text(
+                                        text = "No Folder (General)",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                scope.launch(Dispatchers.IO) {
+                                                    dao.updateTask(task.copy(folderId = null))
+                                                }
+                                                showMoveDialog = false
+                                            }
+                                            .padding(16.dp)
+                                    )
+                                }
+                                items(folders) { folder ->
+                                    Text(
+                                        text = folder.name,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                scope.launch(Dispatchers.IO) {
+                                                    dao.updateTask(task.copy(folderId = folder.id))
+                                                }
+                                                showMoveDialog = false
+                                            }
+                                            .padding(16.dp)
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = { showMoveDialog = false }) {
+                                Text("Cancel")
+                            }
                         }
                     )
                 }

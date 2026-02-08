@@ -29,8 +29,13 @@ import java.util.Collections.emptyList
 import androidx.compose.runtime.rememberCoroutineScope
 import np.ict.mad.mad_assignment.data.DatabaseProvider
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.wear.compose.material3.TextButton
+import androidx.wear.compose.material3.TextButtonDefaults
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import np.ict.mad.mad_assignment.model.TaskDao
@@ -43,6 +48,8 @@ fun FoldersScreen(nav: NavHostController){
     val scope = rememberCoroutineScope()
     val dao = DatabaseProvider.getDatabase(context).taskDao()
     val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
+    val tasks by dao.getAllTasksFlow().collectAsState(initial = emptyList())
+    val folderCounts by remember { derivedStateOf { tasks.groupBy { it.folderId }.mapValues { it.value.size } } }
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var folderNameInput by remember { mutableStateOf("") }
@@ -87,7 +94,8 @@ fun FoldersScreen(nav: NavHostController){
                         folder = folder,
                         dao = dao,
                         scope = scope,
-                        onClick = { nav.navigate("folder_detail/${folder.id}") }
+                        onClick = { nav.navigate("folder_detail/${folder.id}") },
+                        count = folderCounts[folder.id] ?: 0
                     )
 
                     Spacer( modifier = Modifier.height(8.dp) )
@@ -135,7 +143,8 @@ fun FolderCard(
     folder: Folder,
     dao: TaskDao,
     scope: CoroutineScope,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    count: Int
 ){
 
     var menuExpanded by remember { mutableStateOf(false) }
@@ -145,9 +154,127 @@ fun FolderCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {  }
+            .clickable { onClick() }
     ){
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ){
 
+            Icon(
+                imageVector = Icons.Default.Folder,
+                contentDescription = "Folder Icon",
+                modifier = Modifier.size(40.dp),
+                tint = Color(0xFF2196F3)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column {
+                Text(
+                    text = folder.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = "$count tasks",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+            }
+
+            Spacer( modifier = Modifier.weight(1f))
+
+            Box {
+                IconButton( onClick = { menuExpanded = true }) {
+                    Icon(Icons.Default.MoreVert, "Options")
+                }
+
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ){
+                    DropdownMenuItem(
+                        text = { Text("Rename") },
+                        onClick = {
+                            menuExpanded = false
+                            showRenameDialog = true
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = {
+                            menuExpanded = false
+                            showDeleteDialog = true
+                        }
+                    )
+
+                }
+            }
+        }
+    }
+
+    if (showRenameDialog) {
+        var newName by remember { mutableStateOf(folder.name) }
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Rename Folder") },
+            text = {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text("Folder Name") },
+                    singleLine = true,
+                )
+            },
+
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newName.isNotBlank()) {
+                            scope.launch(Dispatchers.IO) {
+                                dao.updateFolder(folder.copy(name = newName))
+                            }
+                            showRenameDialog = false
+                        }
+                    }
+                ) { Text("Rename") }
+            },
+
+            dismissButton = {
+                TextButton(onClick = { showRenameDialog = false }) {
+                    Text("Cancel")
+                }
+
+            }
+        )
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Folder") },
+            text = { Text("All tasks in this folder will be moved to the genral list.")},
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            dao.setTasksFolderToNull(folder.id)
+                            dao.deleteFolder(folder)
+                        }
+                        showDeleteDialog = false
+                    },
+                    colors = TextButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 
 }

@@ -39,11 +39,17 @@ interface TaskDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFolder(folder: Folder)
 
+    @Update
+    suspend fun updateFolder(folder: Folder)
+
     @Delete
     suspend fun deleteFolder(folder: Folder)
 
     @Query("DELETE FROM tasks WHERE folderId = :folderId")
     suspend fun deleteTasksByFolder(folderId: Int)
+
+    @Query("UPDATE tasks SET folderId = NULL WHERE folderId = :folderId")
+    suspend fun setTasksFolderToNull(folderId: Int)
 
 }
 
