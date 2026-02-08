@@ -996,7 +996,7 @@ fun TaskCard(
                         if (task.dueAtMillis > 0) {
                             val dateFormat = remember {
                                 SimpleDateFormat(
-                                    "d/M/yyyy",
+                                    "d/M/yyyy HH:mm",
                                     Locale.getDefault()
                                 )
                             }
@@ -1097,6 +1097,27 @@ fun TaskCard(
                         dismissButton = {
                             TextButton(onClick = { showMoveDialog = false }) {
                                 Text("Cancel")
+
+
+                                if (task.dueAtMillis > 0) {
+                                    val dateFormat = remember { SimpleDateFormat("d/M/yyyy HH:mm", Locale.getDefault()) }
+                                    val formattedDate = dateFormat.format(Date(task.dueAtMillis))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.CalendarMonth,
+                                            contentDescription = "Due Date",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            text = "Due: $formattedDate",
+                                            fontSize = 13.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
                             }
                         }
                     )

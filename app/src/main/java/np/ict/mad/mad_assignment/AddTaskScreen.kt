@@ -1,6 +1,7 @@
 package np.ict.mad.mad_assignment
 
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -62,32 +63,54 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
     ) { uri ->
         imageUri = uri
     }
-
+    // ---------------- TIME ----------------
+    // New state
+    var selectedHour by remember { mutableStateOf(23) }
+    var selectedMinute by remember { mutableStateOf(59) }
     // ---------------- DATE ----------------
     var selectedDate by remember { mutableStateOf("Select date") }
     var dueAtMillis by remember { mutableStateOf(0L) }
 
     val calendar = Calendar.getInstance()
+    val timePicker = TimePickerDialog(
+        context,
+        { _, hourOfDay, minute ->
+            selectedHour = hourOfDay
+            selectedMinute = minute
+
+            // Updated dueAtMillis combining selectedDate + selected time
+            val cal = Calendar.getInstance()
+            val parts = selectedDate.split("/").map { it.toIntOrNull() ?: 0 }
+            if (parts.size == 3) {
+                val (day, month, year) = parts
+                cal.set(Calendar.YEAR, year)
+                cal.set(Calendar.MONTH, month - 1) // Calendar months are 0-based
+                cal.set(Calendar.DAY_OF_MONTH, day)
+                cal.set(Calendar.HOUR_OF_DAY, selectedHour)
+                cal.set(Calendar.MINUTE, selectedMinute)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                dueAtMillis = cal.timeInMillis
+            }
+        },
+        selectedHour,
+        selectedMinute,
+        true // 24-hour format
+    )
+
     val datePicker = DatePickerDialog(
         context,
         { _, year, month, day ->
             selectedDate = "$day/${month + 1}/$year"
-
-            val cal = Calendar.getInstance()
-            cal.set(Calendar.YEAR, year)
-            cal.set(Calendar.MONTH, month)
-            cal.set(Calendar.DAY_OF_MONTH, day)
-            cal.set(Calendar.HOUR_OF_DAY, 23)
-            cal.set(Calendar.MINUTE, 59)
-            cal.set(Calendar.SECOND, 0)
-            cal.set(Calendar.MILLISECOND, 0)
-
-            dueAtMillis = cal.timeInMillis
+            // After picking the date, immediately show time picker
+            timePicker.show()
         },
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
         calendar.get(Calendar.DAY_OF_MONTH)
     )
+
+
 
     // --------------- FOLDER ---------------
     val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
@@ -207,6 +230,7 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
                 Text(selectedDate)
             }
 
+
             // -------- FOLDER --------
             ExposedDropdownMenuBox(
                 expanded = folderExpanded,
@@ -287,24 +311,19 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
             Button(
                 onClick = {
                     if (title.isNotBlank()) {
-
-                        // 🔴 TEST ONLY: force due time to 30 minutes from now
-                        // Reminder time already passed → notification fires in ~10s
-                        val finalDueAtMillis =
-                            System.currentTimeMillis() + 30 * 60_000L
                         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                        //actual code
                         val newTask = Task(
                             title = title,
                             description = description,
                             priority = selectedPriority,
                             category = selectedCategory,
-                            date = "Test: due in 30 min",
+                            date = "$selectedDate ${selectedHour.toString().padStart(2,'0')}:${selectedMinute.toString().padStart(2,'0')}",
                             imageUri = imageUri?.toString(),
-                            dueAtMillis = finalDueAtMillis,
+                            dueAtMillis = dueAtMillis,
                             folderId = selectedFolderId,
                             userId = uid
                         )
+
                         //actual code
                        /* val newTask = Task(
                             title = title,
