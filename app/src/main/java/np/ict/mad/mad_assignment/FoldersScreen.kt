@@ -31,8 +31,9 @@ import np.ict.mad.mad_assignment.data.DatabaseProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-
+import np.ict.mad.mad_assignment.model.TaskDao
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,20 +42,18 @@ fun FoldersScreen(nav: NavHostController){
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val dao = DatabaseProvider.getDatabase(context).taskDao()
-
     val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
 
     var showCreateDialog by remember { mutableStateOf(false) }
-    var showRenameDialog by remember { mutableStateOf<Folder?>(null) }
     var folderNameInput by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Folders") },
+                title = { Text("My Folders") },
                 navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    IconButton( onClick = { nav.popBackStack() }){
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 }
             )
@@ -62,191 +61,93 @@ fun FoldersScreen(nav: NavHostController){
 
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                folderNameInput = "" // Clear input before opening
+                folderNameInput = ""
                 showCreateDialog = true
             }) {
-                Icon(Icons.Default.CreateNewFolder, "Create Folder")
+                Icon(Icons.Default.CreateNewFolder, "New Folder")
             }
         }
-
     ){ padding ->
+
         Column(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-        ) {
-            if (folders.isEmpty()) {
-                Box(Modifier.fillMaxSize().padding(top = 50.dp), contentAlignment = Alignment.Center) {
-                    Text("No folders found. Tap + to create one.", color = Color.Gray)
+                .padding(16.dp)
+        ){
+
+            if(folders.isEmpty()) {
+                Box( Modifier.fillMaxSize(), contentAlignment = Alignment.Center ) {
+                    Text("No Folders Found", color = Color.Gray )
                 }
             } else {
                 folders.forEach { folder ->
-                    var menuExpanded by remember { mutableStateOf(false) }
-
-                    ListItem(
-                        headlineContent = {
-                            // Using a forced black/white color to ensure it isn't "invisible"
-                            Text(
-                                text = folder.name,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        },
-                        leadingContent = {
-                            Icon(Icons.Default.Folder, null, tint = Color(0xFFFFA000))
-                        },
-                        trailingContent = {
-                            Box {
-                                IconButton(onClick = { menuExpanded = true }) {
-                                    Icon(Icons.Default.MoreVert, "Options")
-                                }
-                                DropdownMenu(
-                                    expanded = menuExpanded,
-                                    onDismissRequest = { menuExpanded = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Rename") },
-                                        onClick = {
-                                            menuExpanded = false
-                                            folderNameInput = folder.name
-                                            showRenameDialog = folder
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Delete", color = Color.Red) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            scope.launch(Dispatchers.IO) {
-                                                dao.deleteFolder(folder)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier.clickable {
-                            nav.navigate("folder_detail/${folder.id}")
-                        }
+                    FolderCard(
+                        folder = folder,
+                        dao = dao,
+                        scope = scope,
+                        onClick = { nav.navigate("folder_detail/${folder.id}") }
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                    Spacer( modifier = Modifier.height(8.dp) )
                 }
             }
+
         }
 
-        // --- 1. CREATE DIALOG LOGIC ---
         if (showCreateDialog) {
             AlertDialog(
                 onDismissRequest = { showCreateDialog = false },
-                title = { Text("Create New Folder") },
+                title = { Text("New Folder") },
                 text = {
                     OutlinedTextField(
                         value = folderNameInput,
                         onValueChange = { folderNameInput = it },
-                        label = { Text("Enter Folder Name") },
-                        singleLine = true
+                        label = { Text("Folder Name") },
+                        singleLine = true,
                     )
+
                 },
                 confirmButton = {
-                    Button(onClick = {
-                        if (folderNameInput.isNotBlank()) {
-                            val newName = folderNameInput // Capture the string
-                            scope.launch(Dispatchers.IO) {
-                                dao.insertFolder(Folder(name = newName))
+                    Button(
+                        onClick = {
+                            if (folderNameInput.isNotBlank()) {
+                                scope.launch(Dispatchers.IO) {
+                                    dao.insertFolder(Folder(name = folderNameInput))
+                                }
+                                showCreateDialog = false
                             }
-                            folderNameInput = ""
-                            showCreateDialog = false
-                        }
-                    }) { Text("Create") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showCreateDialog = false }) { Text("Cancel") }
+                        }) { Text("Create") }
+
                 }
+
             )
         }
 
-        // Rename Folder
-        if (showRenameDialog != null) {
-            AlertDialog(
-                onDismissRequest = { showRenameDialog = null },
-                title = { Text("Rename Folder") },
-                text = {
-                    OutlinedTextField(
-                        value = folderNameInput,
-                        onValueChange = { folderNameInput = it },
-                        label = { Text("New Name") }
-                    )
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        val folderToRename = showRenameDialog
-                        if (folderToRename != null && folderNameInput.isNotBlank()) {
-                            scope.launch(Dispatchers.IO) {
-                                // Update the folder in DB. Task cards will update automatically.
-                                dao.insertFolder(folderToRename.copy(name = folderNameInput))
-                            }
-                            folderNameInput = ""
-                            showRenameDialog = null
-                        }
-                    }) { Text("Update") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showRenameDialog = null }) { Text("Cancel") }
-                }
-            )
-        }
-
-        // --- FOLDER LIST ---
-        LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
-            items(folders, key = { it.id }) { folder ->
-                var menuExpanded by remember { mutableStateOf(false) }
-
-                ListItem(
-                    headlineContent = {
-                        // We use a Column to ensure the text has enough vertical space
-                        Column {
-                            Text(
-                                text = folder.name,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface, // Ensures visibility
-                                maxLines = 1
-                            )
-                        }
-                    },
-                    leadingContent = {
-                        Icon(Icons.Default.Folder, null, tint = MaterialTheme.colorScheme.primary)
-                    },
-                    trailingContent = {
-                        Box {
-                            IconButton(onClick = { menuExpanded = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "Options")
-                            }
-                            DropdownMenu(
-                                expanded = menuExpanded,
-                                onDismissRequest = { menuExpanded = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Rename") },
-                                    onClick = {
-                                        menuExpanded = false
-                                        folderNameInput = folder.name
-                                        showRenameDialog = folder
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Delete", color = Color.Red) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        scope.launch(Dispatchers.IO) { dao.deleteFolder(folder) }
-                                    }
-                                )
-                            }
-                        }
-                    },
-                    modifier = Modifier.clickable { nav.navigate("folder_detail/${folder.id}") }
-                )
-                HorizontalDivider()
-            }
-        }
     }
+
+}
+
+
+@Composable
+fun FolderCard(
+    folder: Folder,
+    dao: TaskDao,
+    scope: CoroutineScope,
+    onClick: () -> Unit
+){
+
+    var menuExpanded by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {  }
+    ){
+
+    }
+
 }
