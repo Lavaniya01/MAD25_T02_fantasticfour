@@ -450,11 +450,15 @@ fun HomeScreen(
         }
     }
 
+    val activeTasks = remember(filteredTasks) { filteredTasks.filter { !it.isDone } }
+    val completedTasks = remember(filteredTasks) { filteredTasks.filter { it.isDone } }
+    val COMPLETED_CATEGORY = "Completed"
+
     // Group tasks into predefined categories (anything unknown -> Others)
-    val tasksByCategory = remember(filteredTasks) {
+    val tasksByCategory = remember(activeTasks) {
         val map = PREDEFINED_CATEGORIES.associateWith { mutableListOf<Task>() }.toMutableMap()
 
-        filteredTasks.forEach { t ->
+        activeTasks.forEach { t ->
             val raw = t.category?.trim()
             val key = if (raw != null && raw in PREDEFINED_CATEGORIES) raw else "Others"
             map.getValue(key).add(t)
@@ -469,12 +473,13 @@ fun HomeScreen(
     // Expanded state per category (default = true)
     val expandedMap = remember {
         mutableStateMapOf<String, Boolean>().apply {
-            PREDEFINED_CATEGORIES.forEach { cat ->
+            (PREDEFINED_CATEGORIES + COMPLETED_CATEGORY).forEach { cat ->
                 val saved = prefs.getBoolean(KEY_PREFIX + cat, true)
                 this[cat] = saved
             }
         }
     }
+
 
     Scaffold(
         topBar = {
@@ -691,6 +696,58 @@ fun HomeScreen(
                             }
                         }
                     }
+                    // Completed section always at bottom (only if there are completed tasks)
+                    if (completedTasks.isNotEmpty()) {
+
+                        item {
+                            val completedExpanded =
+                                if (isSearching) true else (expandedMap[COMPLETED_CATEGORY] == true)
+
+                            CategorySectionHeader(
+                                title = COMPLETED_CATEGORY,
+                                count = completedTasks.size,
+                                expanded = completedExpanded,
+                                onToggle = {
+                                    if (!isSearching) {
+                                        val newValue = !(expandedMap[COMPLETED_CATEGORY] == true)
+                                        expandedMap[COMPLETED_CATEGORY] = newValue
+                                        prefs.edit()
+                                            .putBoolean(KEY_PREFIX + COMPLETED_CATEGORY, newValue)
+                                            .apply()
+                                    }
+                                },
+                                // Different "folder colour"
+                                containerColor = Color(0xFFE8EAF6),
+                                iconTint = Color(0xFF3949AB)
+                            )
+                        }
+
+                        item {
+                            val completedExpanded =
+                                if (isSearching) true else (expandedMap[COMPLETED_CATEGORY] == true)
+
+                            AnimatedVisibility(
+                                visible = completedExpanded,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    completedTasks.forEach { task ->
+                                        TaskCard(
+                                            task = task,
+                                            dao = dao,
+                                            scope = scope,
+                                            onClick = { nav.navigate("details/${task.id}") },
+                                            onEdit = { nav.navigate("edit_task/${task.id}") },
+                                            onDelete = {
+                                                scope.launch(Dispatchers.IO) { dao.deleteTask(task) }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -702,16 +759,19 @@ fun CategorySectionHeader(
     title: String,
     count: Int,
     expanded: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    iconTint: Color = MaterialTheme.colorScheme.primary
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onToggle() },
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
-        Row(
+    Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -720,10 +780,10 @@ fun CategorySectionHeader(
             Icon(
                 imageVector = Icons.Default.Folder,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+                tint = iconTint
             )
 
-            Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(10.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
