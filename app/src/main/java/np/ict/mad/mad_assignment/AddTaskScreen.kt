@@ -30,7 +30,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.filled.Category
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.firestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +41,7 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val dao = DatabaseProvider.getDatabase(context).taskDao()
-
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     // ---------------- TITLE ----------------
 
@@ -113,7 +115,7 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
 
 
     // --------------- FOLDER ---------------
-    val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
+    val folders by dao.getAllFoldersFlow(uid).collectAsState(initial = emptyList())
     var selectedFolderId by remember { mutableStateOf(initialFolderId) }
     var folderMenuExpanded by remember { mutableStateOf(false) }
     val selectedFolderName = folders.find { it.id == selectedFolderId }?.name ?: "No Folder (General)"
@@ -336,17 +338,27 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
                         )*/
 
                         scope.launch(Dispatchers.IO) {
-                            val dao =
-                                DatabaseProvider.getDatabase(context).taskDao()
-                            val newId = dao.insertTask(newTask)
 
+                            val dao = DatabaseProvider.getDatabase(context).taskDao()
+                            val newId = dao.insertTask(newTask)
+                            val firestoreTask = newTask.copy(id = newId.toInt())
+
+                            Firebase.firestore
+                                .collection("users")
+                                .document(uid)
+                                .collection("tasks")
+                                .document(newId.toString())
+                                .set(firestoreTask)
+
+                            // STEP 5 — reminder
                             ReminderScheduler.scheduleDueReminder(
                                 context = context,
                                 taskId = newId.toInt(),
-                                title = newTask.title,
-                                dueAtMillis = newTask.dueAtMillis
+                                title = firestoreTask.title,
+                                dueAtMillis = firestoreTask.dueAtMillis
                             )
                         }
+
 
                         nav.popBackStack()
                     }

@@ -307,9 +307,13 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                     )
 
                     scope.launch(Dispatchers.IO) {
+
+                        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
+
                         dao.updateTask(updatedTask)
 
-                        // 🔔 Schedule reminder
+                        FirestoreRepository.uploadTask(uid, updatedTask)
+
                         ReminderScheduler.scheduleDueReminder(
                             context = context,
                             taskId = updatedTask.id,
@@ -317,7 +321,6 @@ fun EditTaskScreen(navController: NavHostController, taskId: Int) {
                             dueAtMillis = updatedTask.dueAtMillis
                         )
                     }
-
                     navController.popBackStack()
                 },
                 modifier = Modifier.fillMaxWidth(),

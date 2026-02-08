@@ -49,7 +49,7 @@ fun FoldersScreen(nav: NavHostController){
     val scope = rememberCoroutineScope()
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val dao = DatabaseProvider.getDatabase(context).taskDao()
-    val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
+    val folders by dao.getAllFoldersFlow(userId = uid).collectAsState(initial = emptyList())
     val tasks by dao.getAllTasksFlow(uid).collectAsState(initial = emptyList())
     val folderCounts by remember { derivedStateOf { tasks.groupBy { it.folderId }.mapValues { it.value.size } } }
 
@@ -124,7 +124,7 @@ fun FoldersScreen(nav: NavHostController){
                         onClick = {
                             if (folderNameInput.isNotBlank()) {
                                 scope.launch(Dispatchers.IO) {
-                                    dao.insertFolder(Folder(name = folderNameInput))
+                                    dao.insertFolder(Folder(name = folderNameInput, userId = uid))
                                 }
                                 showCreateDialog = false
                             }

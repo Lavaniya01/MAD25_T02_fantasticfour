@@ -7,17 +7,22 @@ import androidx.room.PrimaryKey
 data class Task(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-    val title: String,
+
+    val title: String = "",
     val description: String? = null,
     val date: String? = null,
     val priority: String? = null,
     val imageUri: String? = null,
     val isDone: Boolean = false,
-    // store as epoch millis (Long) to avoid timezone parsing issues
+
+    // epoch millis
     val dueAtMillis: Long = 0L,
+
     val folderId: Int? = null,
     val category: String? = null,
-    val userId : String
+
+    val userId: String = ""
 )
+
 
 

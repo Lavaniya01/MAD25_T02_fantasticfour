@@ -431,7 +431,7 @@ fun HomeScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var folderNameInput by remember { mutableStateOf("") }
-    val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
+    val folders by dao.getAllFoldersFlow(uid).collectAsState(initial = emptyList())
 
     val sortedTasks = remember(tasks) {
         tasks.sortedWith (
@@ -595,7 +595,7 @@ fun HomeScreen(
                             onClick = {
                                 if (folderNameInput.isNotBlank()) {
                                     scope.launch(Dispatchers.IO) {
-                                        dao.insertFolder(Folder(name = folderNameInput))
+                                        dao.insertFolder(Folder(name = folderNameInput, userId = uid))
                                         withContext(Dispatchers.Main) {
                                             Toast.makeText(
                                                 context,
@@ -689,9 +689,16 @@ fun HomeScreen(
                                                 onEdit = { nav.navigate("edit_task/${task.id}") },
                                                 onDelete = {
                                                     scope.launch(Dispatchers.IO) {
+
+                                                        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
                                                         dao.deleteTask(task)
+
+                                                        FirestoreRepository.deleteTask(uid, task.id)
+
+                                                        ReminderScheduler.cancelDueReminder(context, task.id)
                                                     }
                                                 }
+
                                             )
                                         }
                                     }
@@ -742,8 +749,16 @@ fun HomeScreen(
                                             onClick = { nav.navigate("details/${task.id}") },
                                             onEdit = { nav.navigate("edit_task/${task.id}") },
                                             onDelete = {
-                                                scope.launch(Dispatchers.IO) { dao.deleteTask(task) }
+                                                scope.launch(Dispatchers.IO) {
+
+                                                    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
+
+                                                    dao.deleteTask(task)
+                                                    FirestoreRepository.deleteTask(uid, task.id)
+                                                    ReminderScheduler.cancelDueReminder(context, task.id)
+                                                }
                                             }
+
                                         )
                                     }
                                 }
@@ -854,7 +869,8 @@ fun TaskCard(
     var showMoveDialog by remember { mutableStateOf(false) }
 
     // 1. Collect all folders to find the name of the folder this task belongs to
-    val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val folders by dao.getAllFoldersFlow(uid).collectAsState(initial = emptyList())
     val parentFolder = folders.find { it.id == task.folderId }
 
     Card(

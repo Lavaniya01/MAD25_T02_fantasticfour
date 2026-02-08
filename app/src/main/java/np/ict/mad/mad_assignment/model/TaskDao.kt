@@ -43,8 +43,8 @@ interface TaskDao {
 
     // Folder Operations
 
-    @Query("SELECT * FROM folders")
-    fun getAllFoldersFlow(): Flow<List<Folder>>
+    @Query("SELECT * FROM folders WHERE userId = :userId ")
+    fun getAllFoldersFlow(userId : String): Flow<List<Folder>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFolder(folder: Folder)
@@ -54,4 +54,8 @@ interface TaskDao {
 
     @Delete
     suspend fun deleteFolder(folder: Folder)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrReplace(task: Task)
+
 }

@@ -26,7 +26,7 @@ fun FolderDetailScreen(nav: NavController, folderId: Int) {
 
     // Fetch only tasks belonging to this folder
     val tasks by dao.getTasksByFolder(folderId, userId = uid).collectAsState(initial = emptyList())
-    val folders by dao.getAllFoldersFlow().collectAsState(initial = emptyList())
+    val folders by dao.getAllFoldersFlow(uid).collectAsState(initial = emptyList())
     val currentFolder = folders.find { it.id == folderId }
 
     Scaffold(
