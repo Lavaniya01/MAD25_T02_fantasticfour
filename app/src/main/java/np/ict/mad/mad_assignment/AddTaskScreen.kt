@@ -25,14 +25,16 @@ import np.ict.mad.mad_assignment.data.DatabaseProvider
 import np.ict.mad.mad_assignment.model.Task
 import java.util.Calendar
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
 import coil.compose.rememberAsyncImagePainter
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.filled.Category
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.firestore
+import com.google.firebase.firestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,7 +142,8 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
             modifier = Modifier
                 .padding(padding)
                 .padding(16.dp)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
 
@@ -298,12 +301,6 @@ fun AddTaskScreen(nav: NavController, initialFolderId: Int? = null) {
                         modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)),
                         contentScale = ContentScale.Crop
                     )
-                }
-
-                Button(onClick = { imagePickerLauncher.launch("image/*")}, modifier = Modifier.padding(vertical = 8.dp)) {
-                    Icon(Icons.Default.AddAPhoto, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Update Photo")
                 }
             }
 
