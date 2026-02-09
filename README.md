@@ -69,5 +69,7 @@ Stage 2 Features :
 - Working settings & Account management
 - Multi-User Support (Multiple devices using Firestore & Firebase)
 - Folders
+- Predefined Task Categories
+- Search Function
 
 
